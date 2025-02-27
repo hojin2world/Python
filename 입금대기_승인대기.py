@@ -491,6 +491,10 @@ if os.path.exists(new_excel_file_approval):
     driver.find_element(By.XPATH, '//*[@id="header"]/div[1]/div[1]/ul/li[2]/a').click()
     time.sleep(1)
 
+    # 광고/일반 체크
+    driver.find_element(By.XPATH, '//*[@id="container"]/div[2]/div[1]/fieldset/div[4]/div[1]/div[2]/table/tbody/tr[1]/td/ul/li[2]/label[1]').click()
+    time.sleep(1)
+
     # 수신번호별 문구 클릭
     driver.find_element(By.XPATH, '//*[@id="container"]/div[2]/div[1]/fieldset/div[4]/div[1]/div[2]/table/tbody/tr[3]/td/ul/li[2]/label').click()
     time.sleep(1)

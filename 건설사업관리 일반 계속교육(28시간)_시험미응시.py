@@ -31,6 +31,19 @@ from datetime import datetime, timedelta
 
 from selenium.webdriver.support.wait import WebDriverWait
 
+#환경변수 확인
+def validate_env_vars():
+    required_vars = [
+        'LOGIN_USERNAME',
+        'LOGIN_PASSWORD',
+        'PPURIO_LOGIN_USERNAME',
+        'PPURIO_LOGIN_PASSWORD'
+    ]
+    
+    missing_vars = [var for var in required_vars if not os.getenv(var)]
+    if missing_vars:
+        raise EnvironmentError(f"필수 환경변수가 없습니다: {', '.join(missing_vars)}")
+
 def get_configured_driver(download_directory):
     # 오늘 날짜 가져오기
     today_date = datetime.now().strftime("%Y%m%d")
@@ -442,3 +455,6 @@ driver.execute_script("arguments[0].focus();", element)
 element.send_keys(Keys.TAB)
 
 print("진도율미달 파일 업로드 완료")
+
+# 스크립트 시작 부분에서 호출
+validate_env_vars()
