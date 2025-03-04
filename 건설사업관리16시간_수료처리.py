@@ -66,6 +66,32 @@ def get_configured_driver(download_directory):
     driver = webdriver.Chrome(options=chrome_options)
     return driver
 
+def calculate_gisu():
+    # 기준일: 2025년 1월 3일 (금요일)
+    base_date = datetime(2025, 1, 3)
+    
+    # 현재 날짜
+    current_date = datetime.now()
+    
+    # 현재 날짜의 요일 (0:월요일, 1:화요일, ..., 4:금요일, ..., 6:일요일)
+    current_weekday = current_date.weekday()
+    
+    # 이번 주 금요일 날짜 계산
+    # 현재 요일이 금요일(4)보다 크면 다음 주 금요일, 작으면 이번 주 금요일
+    days_until_friday = (4 - current_weekday) % 7
+    this_friday = current_date + timedelta(days=days_until_friday)
+    
+    # 전 주의 금요일 계산 (현재 금요일에서 7일 빼기)
+    previous_friday = this_friday - timedelta(days=7)
+    
+    # 기준일부터 전 주 금요일까지의 주차 차이 계산
+    weeks_diff = (previous_friday - base_date).days // 7
+    
+    # 기수 계산 (1기수부터 시작)
+    gisu = weeks_diff + 1
+    
+    return gisu
+
 # 다운로드 디렉토리 설정 및 원하는 파일 이름 지정
 home_directory = os.path.expanduser('~')
 download_directory = os.path.join(home_directory, 'Downloads', 'python')
@@ -139,60 +165,19 @@ selectbox = Select(driver.find_element(By.XPATH,'//*[@id="wrapper"]/div[1]/div/d
 selectbox.select_by_value('2025')
 time.sleep(1)
 
-input_field = driver.find_element(By.XPATH, '//*[@id="wrapper"]/div[1]/div/div/div[1]/div[2]/div/table/tbody/tr[4]/td[4]/input')
-input_field.click()
-# 로케일 한국어로 설정
-#locale
-
-# 현재 날짜 가져오기
-current_date = datetime.now()
-
-# 한국 시간대(UTC+9)의 현재 날짜를 가져옵니다.
-current_date_korean_time = datetime.utcnow() + timedelta(hours=9)
-
-# 주말을 제외하고 어제 날짜를 반환하는 함수
-def get_previous_weekday(current_date):
-    while True:
-        current_date -= timedelta(days=1)
-        if current_date.weekday() < 5:  # 월요일부터 금요일까지
-            return current_date
-
-# 어제 날짜를 가져옵니다.
-previous_weekday = get_previous_weekday(current_date_korean_time)
-
-# 월 숫자를 한국어 월 이름으로 매핑하는 딕셔너리
-month_names_korean = {
-    1: "01월",
-    2: "02월",
-    3: "03월",
-    4: "04월",
-    5: "05월",
-    6: "06월",
-    7: "07월",
-    8: "08월",
-    9: "09월",
-    10: "10월",
-    11: "11월",
-    12: "12월"
-}
-
-# 날짜에 접미사를 추가하는 함수
-def add_suffix(day):
-    return f"{day:02d}일"
-
-# 월과 일을 추출합니다.
-month_number = previous_weekday.month
-month = month_names_korean[month_number]  # 한국어 월 이름
-day = previous_weekday.day
-
-# 날짜를 "월 일[접미사]" 형식으로 포맷합니다.
-formatted_date = f"{month} {add_suffix(day)}"
-
-print(formatted_date)
-
+gisu_name_input_field = driver.find_element(By.XPATH, '//*[@id="wrapper"]/div[1]/div/div/div[1]/div[2]/div/table/tbody/tr[4]/td[4]/input')
+gisu_name_input_field.click()
 time.sleep(1)
-input_field.send_keys(formatted_date)
+gisu_name_input_field.send_keys("16시간")
+time.sleep(1)
 
+gisu_number_field = driver.find_element(By.XPATH, '//*[@id="wrapper"]/div[1]/div/div/div[1]/div[2]/div/table/tbody/tr[4]/td[6]/input')
+gisu_number_field.click()
+time.sleep(1)
+gisu_number = calculate_gisu()
+print(f"학습자 평가 관리 현재 기수: {gisu_number}")
+gisu_number_field.send_keys(gisu_number)
+time.sleep(1)
 
 driver.find_element(By.XPATH,'//*[@id="wrapper"]/div[1]/div/div/div[1]/div[3]/div[2]/div[2]').click()
 time.sleep(5)
@@ -220,14 +205,14 @@ df = pd.read_excel(downloaded_file_path)
 # 'AE' 열의 값이 '수료'인 행만 추출하여 새로운 데이터프레임 생성
 completed_df = df[df['수료 여부'] == '수료']
 
-new_file_path = downloaded_file_path.replace('download.xls', f'{today_date}_수료처리.xlsx')
+new_file_path = downloaded_file_path.replace('download.xls', f'{today_date}_16시간_수료처리.xlsx')
 df.to_excel(new_file_path, index=False)
 
 # 변경 전 파일 경로
 old_file_path = os.path.join(download_directory, 'download.xls')
 
 # 변경 후 파일 경로
-new_file_path = os.path.join(download_directory, f'{today_date}_수료처리.xlsx')
+new_file_path = os.path.join(download_directory, f'{today_date}_16시간_수료처리.xlsx')
 
 # 변경 후 파일이 존재하는지 확인
 if os.path.exists(new_file_path):
@@ -239,7 +224,7 @@ else:
     
     
 # 엑셀 파일 경로
-excel_file = os.path.join(download_directory, f'{today_date}_수료처리.xlsx')
+excel_file = os.path.join(download_directory, f'{today_date}_16시간_수료처리.xlsx')
 # excel_file = rf'C:\Users\user\Downloads\python\{today_date}_진도율90미만(row).xlsx'
 
 
@@ -266,7 +251,7 @@ today_date = datetime.now().strftime("%Y%m%d")
 
 # 새로운 엑셀 파일에 저장
 #new_excel_file = r'C:\Users\user\Downloads\python\{}_뿌리오_진도율미달.xlsx'.format(today_date)
-new_excel_file = rf'{download_directory}\{today_date}_수료처리_변환.xlsx'
+new_excel_file = rf'{download_directory}\{today_date}_16시간_수료처리_변환.xlsx'
 # 새로운 엑셀 파일 경로 및 파일 이름
 df.to_excel(new_excel_file, index=False)  # index=False로 설정하여 인덱스 열을 포함하지 않음
 
@@ -285,9 +270,20 @@ time.sleep(1)
 # learningSTY.select_by_value('2')  # 블렌디드러닝
 # time.sleep(1)
 
-gisu_num_input = driver.find_element(By.XPATH,'//*[@id="wrapper"]/div[1]/div/div/div[1]/div[2]/div/table/tbody/tr[5]/td[2]/input')  # 기수이름
+gisu_name_input = driver.find_element(By.XPATH,'//*[@id="wrapper"]/div[1]/div/div/div[1]/div[2]/div/table/tbody/tr[5]/td[2]/input')  # 기수이름
 time.sleep(2)
-gisu_num_input.send_keys(formatted_date)
+gisu_name_input.send_keys("16시간")
+time.sleep(2)
+
+# 기존 코드에서 기수 관련 부분을 수정
+gisu_number = calculate_gisu()
+print(f"패키지 개설 현재 기수: {gisu_number}")
+
+# 기수번호 입력 부분 수정
+gisu_num_field = driver.find_element(By.XPATH, '//*[@id="wrapper"]/div[1]/div/div/div[1]/div[2]/div/table/tbody/tr[5]/td[4]/input')
+gisu_num_field.clear()
+time.sleep(2)
+gisu_num_field.send_keys(f"{gisu_number}기")
 time.sleep(2)
 
 driver.find_element(By.XPATH, '//*[@id="wrapper"]/div[1]/div/div/div[1]/div[3]/div[2]/div[2]').click()  # 검색 버튼
@@ -313,14 +309,14 @@ today_date = datetime.now().strftime("%Y%m%d")
 df = pd.read_excel(downloaded_file_path2)
 
 
-new_file_path = downloaded_file_path2.replace('download.xls', f'{today_date}_패키지.xlsx')
+new_file_path = downloaded_file_path2.replace('download.xls', f'{today_date}_16시간_패키지.xlsx')
 df.to_excel(new_file_path, index=False)
 
 # 변경 전 파일 경로
 old_file_path = os.path.join(download_directory, 'download.xls')
 
 # 변경 후 파일 경로
-new_file_path = os.path.join(download_directory, f'{today_date}_패키지.xlsx')
+new_file_path = os.path.join(download_directory, f'{today_date}_16시간_패키지.xlsx')
 
 # 변경 후 파일이 존재하는지 확인
 if os.path.exists(new_file_path):
@@ -331,7 +327,7 @@ else:
     print(f"Error: {new_file_path} 파일이 존재하지 않습니다.")
 
 # 엑셀 파일 경로
-excel_file = os.path.join(download_directory, f'{today_date}_패키지.xlsx')
+excel_file = os.path.join(download_directory, f'{today_date}_16시간_패키지.xlsx')
 
 
 
@@ -347,23 +343,23 @@ excel_file = os.path.join(download_directory, f'{today_date}_패키지.xlsx')
 ######################## 수료처리 파일과 대조 시작#####################
 
 # 수료처리변환 파일 경로
-evaluation_file = os.path.join(download_directory, f'{today_date}_수료처리_변환.xlsx')
+evaluation_file = os.path.join(download_directory, f'{today_date}_16시간_수료처리_변환.xlsx')
 # 패키지 파일 경로
-package_file = os.path.join(download_directory, f'{today_date}_패키지.xlsx')
+package_file = os.path.join(download_directory, f'{today_date}_16시간_패키지.xlsx')    
 
 # 원본과 사본 엑셀 파일을 읽습니다.
 evaluation_df = pd.read_excel(evaluation_file)
 package_df = pd.read_excel(package_file)
 
-# 원본의 패키지명과 사본의 과목명 컬럼을 비교하여 일치하는 경우 사본의 기수명 컬럼을 원본에 추가합니다.
-# 여기서 '패키지명'은 원본의 컬럼명, '과목명'과 '기수명'은 사본의 컬럼명이라고 가정합니다.
+# 원본의 패키지명과 사본의 과목명 컬럼을 비교하여 일치하는 경우 사본의 기수명 컬럼을 원본에 추가
+# 여기서 '패키지명'은 원본의 컬럼명, '과목명'과 '기수명'은 사본의 컬럼명이라고 가정
 merged_df = pd.merge(evaluation_df, package_df[['과목명', '기수명']], how='left', left_on='패키지명', right_on='과목명')
 
 # 필요 없는 과목명 컬럼을 제거합니다.
 merged_df.drop(columns=['과목명'], inplace=True)
 
 # 결과를 download_directory에 저장합니다.
-output_path = os.path.join(download_directory, f'{today_date}_검색변환.xlsx')
+output_path = os.path.join(download_directory, f'{today_date}_16시간_검색변환.xlsx')
 merged_df.to_excel(output_path, index=False)
 
 print(f"File saved to {output_path}")
@@ -373,7 +369,7 @@ print(f"File saved to {output_path}")
 
 
 # 엑셀 파일 경로
-excel_file = os.path.join(download_directory, f'{today_date}_검색변환.xlsx')
+excel_file = os.path.join(download_directory, f'{today_date}_16시간_검색변환.xlsx')
 
 # 엑셀 파일을 pandas DataFrame으로 읽어오기
 df = pd.read_excel(excel_file)
@@ -446,7 +442,7 @@ for index, row in df.iterrows():
 
 
     # 엑셀 파일 경로
-    excel_file = os.path.join(download_directory, f'{today_date}_검색변환.xlsx')
+    excel_file = os.path.join(download_directory, f'{today_date}_16시간_검색변환.xlsx')
 
     # 엑셀 파일을 pandas DataFrame으로 읽어오기
     df = pd.read_excel(excel_file)
@@ -637,9 +633,8 @@ for index, row in df.iterrows():
 ################################### 뿌리오 형식으로 변경###################################
 
 
-# 엑셀 파일 경로
-excel_file = os.path.join(download_directory, f'{today_date}_수료처리.xlsx')
-# excel_file = rf'C:\Users\user\Downloads\python\{today_date}_진도율90미만(row).xlsx'
+# 엑셀 파일 경로 (뿌리오 변환용)
+excel_file = os.path.join(download_directory, f'{today_date}_16시간_수료처리.xlsx')
 
 # 파일 존재 여부 확인
 if not os.path.exists(excel_file):
@@ -649,35 +644,30 @@ if not os.path.exists(excel_file):
         print(f"- {file}")
     raise FileNotFoundError(f"파일을 찾을 수 없습니다: {excel_file}")
 
-
-# 엑셀 파일에서 읽어올 열 이름 지정
+# 원본 파일에서 필요한 열 읽기
 columns_to_read = ['휴대전화번호', '이름', '패키지명', '수료 여부']
-
-
-# 엑셀 파일에서 열 읽기
 df = pd.read_excel(excel_file, usecols=columns_to_read, dtype="str")
 
 # 수료자만 필터링
 df = df[df['수료 여부'] == '수료']
 
-# 열의 순서 변경
+# 필요한 열만 선택하고 순서 변경
 df = df[['휴대전화번호', '이름', '패키지명']]
-
 
 # 열 이름 변경
 df.columns = ['수신자 번호(숫자, 공백, 하이픈(-)만)', '[*1*]', '[*2*]']
-print(df.columns)
+
 # 데이터프레임 확인
-print(df)
+print("변환된 데이터프레임 구조:")
 print(df.columns)
+print(df.head())
 
 # 오늘의 날짜를 문자열로 생성 (형식: 년도-월-일)
 today_date = datetime.now().strftime("%Y%m%d")
 
 # 새로운 엑셀 파일에 저장
-new_excel_file = rf'{download_directory}\{today_date}_{first_gisu_number}_수료증발행안내(직무).xlsx'
-# 새로운 엑셀 파일 경로 및 파일 이름
-df.to_excel(new_excel_file, index=False)  # index=False로 설정하여 인덱스 열을 포함하지 않음
+new_excel_file = rf'{download_directory}\{today_date}_{first_gisu_number}_수료증발행안내(16시간).xlsx'
+df.to_excel(new_excel_file, index=False)
 
 print("수료증 파일 뿌리오 변환 완료")
 
@@ -780,7 +770,7 @@ time.sleep(5)
 
 
 # 파일 경로 설정
-file_path = os.path.join(download_directory, rf"{today_date}_{first_gisu_number}_수료증발행안내(직무).xlsx")
+file_path = os.path.join(download_directory, rf"{today_date}_{first_gisu_number}_수료증발행안내(16시간).xlsx")
 print(file_input)
 print(file_path)
 
@@ -794,3 +784,4 @@ driver.execute_script("arguments[0].focus();", element)
 element.send_keys(Keys.TAB)
 
 print("수료증발행 파일 업로드 완료.")
+print("수료증발행 종료.")
