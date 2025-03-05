@@ -202,7 +202,7 @@ input_field.click()
 # 
 # print(formatted_date)
 time.sleep(1)
-input_field.send_keys("건설사업관리 일반 계속교육(28시간) [토목 · 도시교통 · 안전관리] 특급 패키지 1") #기수이름 입력
+input_field.send_keys("28시간") #기수이름 입력
 
 
 
