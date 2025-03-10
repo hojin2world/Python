@@ -300,7 +300,7 @@ df = pd.read_excel(excel_file, usecols=columns_to_read, dtype="str")
 df['학습 종료일'] = pd.to_datetime(df['학습 종료일'])
 
 # 학습 종료일에서 2일 빼기
-df['학습 종료일'] = df['학습 종료일'] - pd.Timedelta(days=2)
+# df['학습 종료일'] = df['학습 종료일'] - pd.Timedelta(days=2)
 
 # 날짜 형식을 'YYYY-MM-DD' 형식의 문자열로 변환
 df['학습 종료일'] = df['학습 종료일'].dt.strftime('%Y-%m-%d')

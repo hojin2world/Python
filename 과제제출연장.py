@@ -249,7 +249,7 @@ else:
 # if not os.path.exists(downloaded_file_path):
 #    raise TimeoutException(f"File '{downloaded_file_path}' was not downloaded within {timeout} seconds")
 
-print("진도율미달 파일 다운로드 및 형식변환 완료")
+print("과제미제출 파일 다운로드 및 형식변환 완료")
 
 ##########################################엑셀 다운 후 패키지
 
@@ -286,7 +286,7 @@ new_excel_file = rf'{download_directory}\{today_date}_과제미제출_연장_변
 # 새로운 엑셀 파일 경로 및 파일 이름
 df.to_excel(new_excel_file, index=False)  # index=False로 설정하여 인덱스 열을 포함하지 않음
 
-print("진도율미달 파일 변환 완료")
+print("과제미제출 연장 파일 변환 완료")
 
 driver.find_element(By.XPATH, '//*[@id="side_drop_down_menu"]/div/div[4]/div[7]/div[1]').click()
 time.sleep(1)
