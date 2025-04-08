@@ -1,8 +1,3 @@
-from dotenv import load_dotenv
-import os
-
-load_dotenv()
-
 # -*- coding: utf-8 -*-
 import locale
 import time
