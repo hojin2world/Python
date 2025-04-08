@@ -1,6 +1,10 @@
-# -*- coding: utf-8 -*-
+from dotenv import load_dotenv
+import os
+import configparser
+import tkinter as tk
+from tkinter import messagebox
+from login_module import get_login_credentials
 import locale
-import sys
 import time
 import os
 from datetime import datetime, timedelta
@@ -26,91 +30,179 @@ from datetime import datetime
 from datetime import datetime, timedelta
 
 from selenium.webdriver.support.wait import WebDriverWait
-from dotenv import load_dotenv
-
-# 환경 변수 로드
-load_dotenv()
-
-USERNAME = os.getenv('LOGIN_USERNAME')
-PASSWORD = os.getenv('LOGIN_PASSWORD')
-DOWNLOAD_DIR = os.getenv('DOWNLOAD_DIRECTORY', os.path.join(os.path.expanduser('~'), 'Downloads', 'python'))
 
 def get_configured_driver(download_directory):
     # 오늘 날짜 가져오기
     today_date = datetime.now().strftime("%Y%m%d")
+    file_name = f"{today_date}_건설사업관리 일반 계속교육(28시간)_개설.xlsx"
+
+    print("파일 이름:", file_name)
 
     # 다운로드 디렉토리 설정
     home_directory = os.path.expanduser('~')
     download_directory = os.path.join(home_directory, 'Downloads', 'python')
 
-    # 디렉토리 존재 여부 확인
+    # 디렉토리가 있는지 확인
     if not os.path.exists(download_directory):
-        # 존재하지 않으면 디렉토리 생성
+        # 디렉토리가 없다면 생성
         os.makedirs(download_directory)
-
-    # 이제 download_directory는 'Downloads' 안의 'python' 디렉토리를 가리킵니다.
 
     print(download_directory)
 
-    # 다운로드 디렉토리 및 원하는 파일 이름 설정을 위해 Chrome 옵션 구성
+    # Chrome 옵션 설정
     chrome_options = Options()
     chrome_options.add_experimental_option('prefs', {
         'download.default_directory': download_directory,
         'download.prompt_for_download': False,
         'download.directory_upgrade': True,
+        'download.default_filename': file_name,
         'detach': True,
         'download.mime_types': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     })
 
-    # 구성된 옵션으로 Chrome WebDriver 초기화
+    # WebDriver 초기화
     driver = webdriver.Chrome(options=chrome_options)
     return driver
 
-
-# 다운로드 디렉토리 설정 및 원하는 파일 이름 지정
+# 다운로드 디렉토리 설정
 home_directory = os.path.expanduser('~')
 download_directory = os.path.join(home_directory, 'Downloads', 'python')
 
-# 구성된 WebDriver 인스턴스 가져오기
-driver = get_configured_driver(DOWNLOAD_DIR)
+# WebDriver 인스턴스 가져오기
+driver = get_configured_driver(download_directory)
 
-files = os.listdir(download_directory)
+# 로그인 정보 받아오기
+login_credentials = get_login_credentials()
 
+# URL로 이동
+time.sleep(2)
+url = 'https://www.con.or.kr/'
+driver.get(url)
+driver.maximize_window()
 
-# 로그인 함수 정의 (한 번만 실행)
-def click_element(driver, xpath, wait_time=10):
-    wait = WebDriverWait(driver, wait_time)
-    element = wait.until(EC.element_to_be_clickable((By.XPATH, xpath)))
-    element.click()
+def create_config():
+    config = configparser.ConfigParser()
+    
+    def save_config():
+        config['CON'] = {
+            'username': con_username_entry.get(),
+            'password': con_password_entry.get()
+        }
+        config['PPURIO'] = {
+            'username': ppurio_username_entry.get(),    
+            'password': ppurio_password_entry.get()
+        }
+        
+        with open('config.ini', 'w', encoding='utf-8') as configfile:
+            config.write(configfile)
+        messagebox.showinfo("알림", "설정이 저장되었습니다.")
+        root.destroy()
+    
+    root = tk.Tk()
+    root.title("로그인 정보 설정")
+    
+    # CON 로그인 정보
+    tk.Label(root, text="CON 로그인 정보", font=('Helvetica', 10, 'bold')).grid(row=0, column=0, columnspan=2, pady=5)
+    tk.Label(root, text="아이디:").grid(row=1, column=0, padx=5, pady=2)
+    tk.Label(root, text="비밀번호:").grid(row=2, column=0, padx=5, pady=2)
+    
+    con_username_entry = tk.Entry(root)
+    con_password_entry = tk.Entry(root, show="*")
+    con_username_entry.grid(row=1, column=1, padx=5, pady=2)
+    con_password_entry.grid(row=2, column=1, padx=5, pady=2)
+    
+    # PPURIO 로그인 정보
+    tk.Label(root, text="PPURIO 로그인 정보", font=('Helvetica', 10, 'bold')).grid(row=3, column=0, columnspan=2, pady=5)
+    tk.Label(root, text="아이디:").grid(row=4, column=0, padx=5, pady=2)
+    tk.Label(root, text="비밀번호:").grid(row=5, column=0, padx=5, pady=2)
+    
+    ppurio_username_entry = tk.Entry(root)
+    ppurio_password_entry = tk.Entry(root, show="*")
+    ppurio_username_entry.grid(row=4, column=1, padx=5, pady=2)
+    ppurio_password_entry.grid(row=5, column=1, padx=5, pady=2)
+    
+    # 기존 설정 불러오기
+    if os.path.exists('config.ini'):
+        config.read('config.ini', encoding='utf-8')
+        if 'CON' in config:
+            con_username_entry.insert(0, config['CON'].get('username', ''))
+            con_password_entry.insert(0, config['CON'].get('password', ''))
+        if 'PPURIO' in config:
+            ppurio_username_entry.insert(0, config['PPURIO'].get('username', ''))
+            ppurio_password_entry.insert(0, config['PPURIO'].get('password', ''))
+    
+    # 저장 버튼
+    tk.Button(root, text="저장", command=save_config).grid(row=6, column=0, columnspan=2, pady=10)
+    
+    # 창을 화면 중앙에 위치
+    root.eval('tk::PlaceWindow . center')
+    root.mainloop()
 
-def send_keys_to_element(driver, xpath, keys, wait_time=10):
-    wait = WebDriverWait(driver, wait_time)
-    element = wait.until(EC.visibility_of_element_located((By.XPATH, xpath)))
-    element.send_keys(keys)
+def get_login_credentials():
+    config = configparser.ConfigParser()
+    
+    # config.ini 파일이 없으면 생성
+    if not os.path.exists('config.ini'):
+        create_config()
+    
+    # config.ini 파일 읽기
+    config.read('config.ini', encoding='utf-8')
+    
+    # 설정이 없거나 불완전한 경우 설정 창 표시
+    if not ('CON' in config and 'PPURIO' in config and
+            all(config['CON'].get(key) for key in ['username', 'password']) and
+            all(config['PPURIO'].get(key) for key in ['username', 'password'])):
+        create_config()
+        config.read('config.ini', encoding='utf-8')
+    
+    return {
+        'con_username': config['CON']['username'],
+        'con_password': config['CON']['password'],
+        'ppurio_username': config['PPURIO']['username'],
+        'ppurio_password': config['PPURIO']['password']
+    }
 
+# 로그인 정보 받아오기
+login_credentials = get_login_credentials()
+# 로그인 함수 수정
 def login(driver):
+    # URL로 이동
+    url = 'https://www.con.or.kr/'
+    driver.get(url)
+    driver.maximize_window()
+    time.sleep(2)
+    
+    # 팝업 처리
     try:
-        driver.get('https://con.or.kr')
-        driver.maximize_window()
+        driver.find_element(By.XPATH, '//*[@id="popup_layout_list"]/div/div[2]/div[2]/div/label/span').click()
+        driver.find_element(By.XPATH, '//*[@id="popup_layout_list"]/div/div[2]/div[2]/button').click()
+    except:
+        print("팝업이 없거나 이미 처리되었습니다.")
+    
+    try:
+        # 로그인 시도
+        id_field = driver.find_element(By.XPATH, '//*[@id="id"]')
+        id_field.click()
+        id_field.send_keys(login_credentials['con_username'])
+        time.sleep(1)
         
-        click_element(driver, '//*[@id="popup_layout_list"]/div/div[2]/div[2]/div/label/span')
-        click_element(driver, '//*[@id="popup_layout_list"]/div/div[2]/div[2]/button')
+        pw_field = driver.find_element(By.XPATH, '//*[@id="pw"]')
+        pw_field.click()
+        pw_field.send_keys(login_credentials['con_password'])
+        time.sleep(1)
         
-        click_element(driver, '//*[@id="id"]')
-        send_keys_to_element(driver, '//*[@id="id"]', USERNAME)
+        # 로그인 버튼 클릭
+        driver.find_element(By.XPATH, '/html/body/div[3]/div/div[1]/div/div[2]/div[1]/button').click()
+        time.sleep(2)
         
-        click_element(driver, '//*[@id="pw"]')
-        send_keys_to_element(driver, '//*[@id="pw"]', PASSWORD)
-        
-        click_element(driver, '/html/body/div[3]/div/div[1]/div/div[2]/div[1]/button')
-        click_element(driver, '//*[@id="popup_layout_list"]/div/div[2]/div[3]/div[2]')
-    except TimeoutException:
-        print("로그인 중 오류 발생")
-        driver.quit()
+    except Exception as e:
+        print(f"로그인 중 오류 발생: {str(e)}")
+        raise
 
 # 로그인 한 번만 실행
 login(driver)
-
+time.sleep(2)
+driver.find_element(By.XPATH,'//*[@id="popup_layout_list"]/div/div[2]/div[3]/div[2]').click()
 time.sleep(2)
 # 테스트
 # 팝업
@@ -118,20 +210,20 @@ time.sleep(2)
 # driver.find_element(By.XPATH, '//*[@id="popup_layout_list"]/div/div[2]/div[2]/button').click()
 # xpath를 이용해 클릭 ##
 
-start_date = datetime(2025, 3, 7)  # 2025년 2월 다섯 번째 금요일
+start_date = datetime(2025, 3, 28)  # 2025년 2월 다섯 번째 금요일
 current_date = start_date
 current_end_friday = start_date
 
 current_date_time = datetime.now()
 print("current_date_time", current_date_time)
-count = 9
+count = 12
 while current_date.year == 2025:
     # 현재 날짜가 금요일인 경우 count 증가
     if current_date.weekday() == 4:  # 4는 금요일
         count += 1
     print("시작 기수:", count)
     print(current_date.weekday())
-    formatted_count = f"2025_{count}_건설사업관리 일반 계속교육(28시간) [건축 · 조경 · 건설지원 · 안전관리] 특급 패키지 1"
+    formatted_count = f"2025_{count}_건설사업관리 일반 계속교육(28시간) [기계 · 전기전자 · 환경 · 안전관리] 특급 패키지 1"
 
     # 과정개설관리 클릭
     driver.find_element(By.XPATH, '//*[@id="side_drop_down_menu"]/div/div[4]/div[7]/div[1]').click()
@@ -164,7 +256,7 @@ while current_date.year == 2025:
     time.sleep(2)
 
     # 16시간 패키지 입력
-    input_field.send_keys("2025-0기_건설사업관리 일반 계속교육(28시간) [건축 · 조경 · 건설지원 · 안전관리] 특급 패키지 1")
+    input_field.send_keys("2025-0기_건설사업관리 일반 계속교육(28시간) [기계 · 전기전자 · 환경 · 안전관리] 특급 패키지 1")
     driver.find_element(By.XPATH,
                         '//*[@id="popup_layout_list"]/div/div[2]/div[2]/div/div[2]/div/table/tbody/tr[2]/td').click()
     time.sleep(5)
@@ -179,7 +271,7 @@ while current_date.year == 2025:
     input_field.click()
     time.sleep(20)
 
-    input_field.send_keys("2025-0기_건설사업관리 일반 계속교육(28시간) [건축 · 조경 · 건설지원 · 안전관리] 특급 패키지 1")
+    input_field.send_keys("2025-0기_건설사업관리 일반 계속교육(28시간) [기계 · 전기전자 · 환경 · 안전관리] 특급 패키지 1")
     time.sleep(30)
 
     driver.find_element(By.XPATH, '//*[@id="popup_layout_list"]/div/div[2]/div[2]/div[2]/div[2]/div').click()
@@ -260,7 +352,7 @@ while current_date.year == 2025:
                                     '//*[@id="wrapper"]/div[1]/div/div/div[1]/div[3]/div/table/tbody/tr[5]/td[2]/input')
     gisu_name.click()
     time.sleep(3)
-    formatted_count = f"2025_{count}기_건설사업관리 일반 계속교육(28시간) [건축 · 조경 · 건설지원 · 안전관리] 특급 패키지 1"
+    formatted_count = f"2025_{count}기_건설사업관리 일반 계속교육(28시간) [기계 · 전기전자 · 환경 · 안전관리] 특급 패키지 1"
     gisu_name.clear()
     gisu_name.send_keys(formatted_count)
     time.sleep(3)

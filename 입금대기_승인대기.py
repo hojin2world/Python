@@ -1,9 +1,9 @@
 from dotenv import load_dotenv
 import os
-
-load_dotenv()
-
-# -*- coding: utf-8 -*-
+import configparser
+import tkinter as tk
+from tkinter import messagebox
+from login_module import get_login_credentials
 import locale
 import sys
 import time
@@ -20,22 +20,17 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
 from openpyxl import load_workbook
 from selenium.webdriver.common.keys import Keys
 import xlrd
 import os, shutil
 import pandas as pd
 from datetime import datetime
-from datetime import datetime, timedelta
-
 from selenium.webdriver.support.wait import WebDriverWait
 
 def get_configured_driver(download_directory):
     # Get today's date
     today_date = datetime.now().strftime("%Y%m%d")
-
 
     # 다운로드 디렉토리 설정
     home_directory = os.path.expanduser('~')
@@ -68,20 +63,102 @@ def get_configured_driver(download_directory):
 home_directory = os.path.expanduser('~')
 download_directory = os.path.join(home_directory, 'Downloads', 'python')
 
-
 # Get the configured WebDriver instance
-
 driver = get_configured_driver(download_directory)
 
 files = os.listdir(download_directory)
-
 
 # Navigate to the URL
 url = 'https://www.con.or.kr/'
 driver.get(url)
 driver.maximize_window()
 
-# 로그인 함수 정의 (한 번만 실행)
+def create_config():
+    config = configparser.ConfigParser()
+    
+    def save_config():
+        config['CON'] = {
+            'username': con_username_entry.get(),
+            'password': con_password_entry.get()
+        }
+        config['PPURIO'] = {
+            'username': ppurio_username_entry.get(),
+            'password': ppurio_password_entry.get()
+        }
+        
+        with open('config.ini', 'w', encoding='utf-8') as configfile:
+            config.write(configfile)
+        messagebox.showinfo("알림", "설정이 저장되었습니다.")
+        root.destroy()
+    
+    root = tk.Tk()
+    root.title("로그인 정보 설정")
+    
+    # CON 로그인 정보
+    tk.Label(root, text="CON 로그인 정보", font=('Helvetica', 10, 'bold')).grid(row=0, column=0, columnspan=2, pady=5)
+    tk.Label(root, text="아이디:").grid(row=1, column=0, padx=5, pady=2)
+    tk.Label(root, text="비밀번호:").grid(row=2, column=0, padx=5, pady=2)
+    
+    con_username_entry = tk.Entry(root)
+    con_password_entry = tk.Entry(root, show="*")
+    con_username_entry.grid(row=1, column=1, padx=5, pady=2)
+    con_password_entry.grid(row=2, column=1, padx=5, pady=2)
+    
+    # PPURIO 로그인 정보
+    tk.Label(root, text="PPURIO 로그인 정보", font=('Helvetica', 10, 'bold')).grid(row=3, column=0, columnspan=2, pady=5)
+    tk.Label(root, text="아이디:").grid(row=4, column=0, padx=5, pady=2)
+    tk.Label(root, text="비밀번호:").grid(row=5, column=0, padx=5, pady=2)
+    
+    ppurio_username_entry = tk.Entry(root)
+    ppurio_password_entry = tk.Entry(root, show="*")
+    ppurio_username_entry.grid(row=4, column=1, padx=5, pady=2)
+    ppurio_password_entry.grid(row=5, column=1, padx=5, pady=2)
+    
+    # 기존 설정 불러오기
+    if os.path.exists('config.ini'):
+        config.read('config.ini', encoding='utf-8')
+        if 'CON' in config:
+            con_username_entry.insert(0, config['CON'].get('username', ''))
+            con_password_entry.insert(0, config['CON'].get('password', ''))
+        if 'PPURIO' in config:
+            ppurio_username_entry.insert(0, config['PPURIO'].get('username', ''))
+            ppurio_password_entry.insert(0, config['PPURIO'].get('password', ''))
+    
+    # 저장 버튼
+    tk.Button(root, text="저장", command=save_config).grid(row=6, column=0, columnspan=2, pady=10)
+    
+    # 창을 화면 중앙에 위치
+    root.eval('tk::PlaceWindow . center')
+    root.mainloop()
+
+def get_login_credentials():
+    config = configparser.ConfigParser()
+    
+    # config.ini 파일이 없으면 생성
+    if not os.path.exists('config.ini'):
+        create_config()
+    
+    # config.ini 파일 읽기
+    config.read('config.ini', encoding='utf-8')
+    
+    # 설정이 없거나 불완전한 경우 설정 창 표시
+    if not ('CON' in config and 'PPURIO' in config and
+            all(config['CON'].get(key) for key in ['username', 'password']) and
+            all(config['PPURIO'].get(key) for key in ['username', 'password'])):
+        create_config()
+        config.read('config.ini', encoding='utf-8')
+    
+    return {
+        'con_username': config['CON']['username'],
+        'con_password': config['CON']['password'],
+        'ppurio_username': config['PPURIO']['username'],
+        'ppurio_password': config['PPURIO']['password']
+    }
+
+# 로그인 정보 받아오기
+login_credentials = get_login_credentials()
+
+# 로그인 함수 수정
 def login(driver):
     # URL로 이동
     url = 'https://www.con.or.kr/'
@@ -96,31 +173,20 @@ def login(driver):
     except:
         print("팝업이 없거나 이미 처리되었습니다.")
     
-    # 환경 변수에서 로그인 정보 가져오기
-    USERNAME = os.getenv('LOGIN_USERNAME')
-    PASSWORD = os.getenv('LOGIN_PASSWORD')
-    
-    if not USERNAME or not PASSWORD:
-        raise ValueError("로그인 정보가 환경 변수에 설정되지 않았습니다.")
-    
     try:
         # 로그인 시도
         id_field = driver.find_element(By.XPATH, '//*[@id="id"]')
         id_field.click()
-        id_field.send_keys(USERNAME)
+        id_field.send_keys(login_credentials['con_username'])
         time.sleep(1)
         
         pw_field = driver.find_element(By.XPATH, '//*[@id="pw"]')
         pw_field.click()
-        pw_field.send_keys(PASSWORD)
+        pw_field.send_keys(login_credentials['con_password'])
         time.sleep(1)
         
         # 로그인 버튼 클릭
         driver.find_element(By.XPATH, '/html/body/div[3]/div/div[1]/div/div[2]/div[1]/button').click()
-        time.sleep(2)
-
-        time.sleep(2)
-        driver.find_element(By.XPATH,'//*[@id="popup_layout_list"]/div/div[2]/div[3]/div[2]').click()
         time.sleep(2)
         
     except Exception as e:
@@ -129,7 +195,9 @@ def login(driver):
 
 # 로그인 한 번만 실행
 login(driver)
-
+time.sleep(2)
+driver.find_element(By.XPATH,'//*[@id="popup_layout_list"]/div/div[2]/div[3]/div[2]').click()
+time.sleep(2)
 driver.find_element(By.XPATH,'//*[@id="side_drop_down_menu"]/div/div[4]/div[5]/div[1]').click()     #결제내역 클릭
 time.sleep(2)
 driver.find_element(By.XPATH,'//*[@id="side_drop_down_menu"]/div/div[4]/div[5]/div[2]/div[1]/div[1]/a').click() #주문내역 조회 클릭
@@ -139,7 +207,6 @@ time.sleep(2)
 selectbox = Select(driver.find_element(By.XPATH,'//*[@id="wrapper"]/div[1]/div/div/div/div[2]/div/table/tbody/tr[5]/td[2]/div[1]/select')) #기간 - 교육종료일 선택
 selectbox.select_by_value('5')
 time.sleep(2)
-
 
 # Function to add suffix to day
 def add_suffix(day):
@@ -173,14 +240,12 @@ day = str(next_weekday.day).zfill(2)
 # Format the date in "year-month-day" format.
 formatted_date = f"{next_weekday.year}-{month}-{day}"
 
-
 start_date_field = driver.find_element(By.XPATH, '//*[@id="wrapper"]/div[1]/div/div/div/div[2]/div/table/tbody/tr[5]/td[2]/div[2]/div[1]/div/input')
 start_date_field.click()
 
 print("교육 종료일 시작일자 : " + formatted_date)
 time.sleep(1)
 start_date_field.send_keys(formatted_date)
-
 
 end_date_field = driver.find_element(By.XPATH, '//*[@id="wrapper"]/div[1]/div/div/div/div[2]/div/table/tbody/tr[5]/td[2]/div[2]/div[3]/div/input')
 end_date_field.click()
@@ -234,7 +299,6 @@ else:
 
 print("주문내역 파일 다운로드 완료")
 
-
 ################################### 뿌리오 형식으로 변경###################################
 today_date = datetime.now().strftime("%Y%m%d")
 # 엑셀 파일 경로
@@ -242,10 +306,6 @@ excel_file = os.path.join(download_directory, f'{today_date}_주문내역.xlsx')
 
 # 엑셀 파일에서 읽어올 열 이름 지정
 columns_to_read = ['휴대폰번호', '이름', '패키지명', '교육종료일', '주문금액', '결제상태' ,'관련기관']
-
-
-
-
 
 # Filter data based on payment status for 'Awaiting Deposit'
 df_deposit = df[df['결제상태'] == '입금대기']
@@ -268,19 +328,6 @@ else:
     print("입금대기 엑셀 파일이 생성되었습니다.")
     print("엑셀 파일 경로:", new_excel_file_deposit)
 
-# df_deposit = df_deposit[['휴대폰번호', '이름', '패키지명', '교육종료일', '주문금액']]
-#
-# # Rename columns
-# df_deposit.columns = ['수신자 번호(숫자, 공백, 하이픈(-)만)', '[*1*]', '[*2*]', '[*3*]', '[*4*]']
-#
-# # New Excel file path and file name for 'Awaiting Deposit'
-# new_excel_file_deposit = os.path.join(download_directory, f"{today_date}_입금대기.xlsx")
-
-
-# Save DataFrame to Excel file for 'Awaiting Deposit'
-# df_deposit.to_excel(new_excel_file_deposit, index=False)
-
-
 df_approval = df[df['결제상태'] == '승인대기']
 if df_approval.empty:
     print("승인대기건이 없습니다.")
@@ -293,21 +340,6 @@ else:
     print("승인대기 엑셀 파일이 생성되었습니다.")
     print("엑셀 파일 경로:", new_excel_file_approval)
 
-#Filter data based on payment status for 'Awaiting Approval'
-# df_approval = df[df['결제상태'] == '승인대기']
-# df_approval = df_approval[['휴대폰번호', '이름', '패키지명', '교육종료일', '관련기관']]
-#
-# # Rename columns for 'Awaiting Approval'
-# df_approval.columns = ['수신자 번호(숫자, 공백, 하이픈(-)만)', '[*1*]', '[*2*]', '[*3*]', '[*4*]']
-#
-# # New Excel file path and file name for 'Awaiting Approval'
-# new_excel_file_approval = os.path.join(download_directory, f"{today_date}_승인대기.xlsx")
-#
-# # Save DataFrame to Excel file for 'Awaiting Approval'
-# df_approval.to_excel(new_excel_file_approval, index=False)
-# print("승인대기 엑셀")
-# print(df_approval.columns)
-
 ####################################비즈 뿌리오 로그인 및 문자 전송 #####################################
 
 new_excel_file_deposit = os.path.join(download_directory, f"{today_date}_입금대기.xlsx")
@@ -318,6 +350,27 @@ if os.path.exists(new_excel_file_deposit):
     print("파일이 존재합니다. 추가 처리를 진행합니다.")
     print("입금대기 파일이 존재합니다.")
     print("입금대기 비즈뿌리오를 실행합니다.")
+
+    # PPURIO 로그인 부분 수정
+    def ppurio_login(driver):
+        username_input = driver.find_element(By.ID, 'bizwebHeaderUserId')
+        username_input.send_keys(login_credentials['ppurio_username'])
+
+        password_input = driver.find_element(By.ID, 'bizwebHeaderUserPwd')
+        password_input.send_keys(login_credentials['ppurio_password'])
+
+        login_button = driver.find_element(By.XPATH, '//*[@id="bizwebHeaderBtnLogin"]')
+        login_button.click()
+
+        # 비밀번호 만료 연장 처리
+        try:
+            element = driver.find_element(By.XPATH, '//*[@id="bizwebBtnWebPasswdExpiredateDelay"]')
+            element.click()
+            print("비밀번호 연장 처리")
+        except NoSuchElementException:
+            print("비밀번호 연장 처리 없음")
+
+        time.sleep(2)
 
     # ChromeOptions 객체 생성
     chrome_options = webdriver.ChromeOptions()
@@ -333,37 +386,7 @@ if os.path.exists(new_excel_file_deposit):
     driver.get(new_url)
     driver.maximize_window()
 
-    # 예시: 로그인
-    # 로그인 요소를 찾아서 클릭하거나 입력
-    PPURIO_USERNAME = os.getenv('PPURIO_LOGIN_USERNAME')
-    PPURIO_PASSWORD = os.getenv('PPURIO_LOGIN_PASSWORD')
-    username_input = driver.find_element(By.ID, 'bizwebHeaderUserId')
-    username_input.send_keys(PPURIO_USERNAME)  # 아이디 입력
-
-    password_input = driver.find_element(By.ID, 'bizwebHeaderUserPwd')
-    password_input.send_keys(PPURIO_PASSWORD)  # 비밀번호 입력
-
-    login_button = driver.find_element(By.XPATH, '//*[@id="bizwebHeaderBtnLogin"]')
-    login_button.click()
-    session_cookies = driver.get_cookies()
-
-    # 페이지 로딩을 위해 충분한 시간을 주거나 필요한 요소에 대한 대기 조건을 추가
-    time.sleep(2)  # 필요한 경우 시간 조정
-
-    # 비밀번호 만료 연장 버튼이 존재하면 클릭, 존재하지 않으면 패스
-    xpath = '//*[@id="bizwebBtnWebPasswdExpiredateDelay"]'
-
-    try:
-        element = driver.find_element(By.XPATH, xpath)
-        element.click()
-        print("비밀번호 연장 처리")
-    except NoSuchElementException:
-        print("비밀번호 연장 처리 없음")
-
-    time.sleep(2)
-
-
-    # 로그인 후에는 Selenium을 사용하여 웹 사이트에서 추가 작업을 계속할 수 있습니다.
+    ppurio_login(driver)
 
     # 메세지 전송 버튼 클릭
     driver.find_element(By.XPATH, '//*[@id="header"]/div[1]/div[1]/ul/li[2]/a').click()
@@ -442,6 +465,27 @@ if os.path.exists(new_excel_file_approval):
     print("파일이 존재합니다. 추가 처리를 진행합니다.")
     print("입금대기 파일이 존재합니다.")
     print("입금대기 비즈뿌리오를 실행합니다.")
+    # PPURIO 로그인 부분 수정
+    def ppurio_login(driver):
+        username_input = driver.find_element(By.ID, 'bizwebHeaderUserId')
+        username_input.send_keys(login_credentials['ppurio_username'])
+
+        password_input = driver.find_element(By.ID, 'bizwebHeaderUserPwd')
+        password_input.send_keys(login_credentials['ppurio_password'])
+
+        login_button = driver.find_element(By.XPATH, '//*[@id="bizwebHeaderBtnLogin"]')
+        login_button.click()
+
+        # 비밀번호 만료 연장 처리
+        try:
+            element = driver.find_element(By.XPATH, '//*[@id="bizwebBtnWebPasswdExpiredateDelay"]')
+            element.click()
+            print("비밀번호 연장 처리")
+        except NoSuchElementException:
+            print("비밀번호 연장 처리 없음")
+
+        time.sleep(2)
+
     # ChromeOptions 객체 생성
     chrome_options = webdriver.ChromeOptions()
 
@@ -456,36 +500,7 @@ if os.path.exists(new_excel_file_approval):
     driver.get(new_url)
     driver.maximize_window()
 
-    # 예시: 로그인
-    # 로그인 요소를 찾아서 클릭하거나 입력
-    PPURIO_USERNAME = os.getenv('PPURIO_LOGIN_USERNAME')
-    PPURIO_PASSWORD = os.getenv('PPURIO_LOGIN_PASSWORD')
-    username_input = driver.find_element(By.ID, 'bizwebHeaderUserId')
-    username_input.send_keys(PPURIO_USERNAME)  # 아이디 입력
-
-    password_input = driver.find_element(By.ID, 'bizwebHeaderUserPwd')
-    password_input.send_keys(PPURIO_PASSWORD)  # 비밀번호 입력
-
-    login_button = driver.find_element(By.XPATH, '//*[@id="bizwebHeaderBtnLogin"]')
-    login_button.click()
-    session_cookies = driver.get_cookies()
-
-    # 페이지 로딩을 위해 충분한 시간을 주거나 필요한 요소에 대한 대기 조건을 추가
-    time.sleep(2)  # 필요한 경우 시간 조정
-
-    # 비밀번호 만료 연장 버튼이 존재하면 클릭, 존재하지 않으면 패스
-    xpath = '//*[@id="bizwebBtnWebPasswdExpiredateDelay"]'
-
-    try:
-        element = driver.find_element(By.XPATH, xpath)
-        element.click()
-        print("비밀번호 연장 처리")
-    except NoSuchElementException:
-        print("비밀번호 연장 처리 없음")
-
-    time.sleep(2)
-
-    # 로그인 후에는 Selenium을 사용하여 웹 사이트에서 추가 작업을 계속할 수 있습니다.
+    ppurio_login(driver)
 
     # 메세지 전송 버튼 클릭
     driver.find_element(By.XPATH, '//*[@id="header"]/div[1]/div[1]/ul/li[2]/a').click()

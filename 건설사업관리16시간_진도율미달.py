@@ -30,6 +30,7 @@ from datetime import datetime
 from datetime import datetime, timedelta
 
 from selenium.webdriver.support.wait import WebDriverWait
+from login_module import get_login_credentials
 
 def get_configured_driver(download_directory):
     # 오늘 날짜 가져오기
@@ -84,6 +85,9 @@ driver.maximize_window()
 
 time.sleep(2)
 
+# 로그인 정보 받아오기
+login_credentials = get_login_credentials()
+
 def login(driver):
     # URL로 이동
     url = 'https://www.con.or.kr/'
@@ -98,31 +102,20 @@ def login(driver):
     except:
         print("팝업이 없거나 이미 처리되었습니다.")
     
-    # 환경 변수에서 로그인 정보 가져오기
-    USERNAME = os.getenv('LOGIN_USERNAME')
-    PASSWORD = os.getenv('LOGIN_PASSWORD')
-    
-    if not USERNAME or not PASSWORD:
-        raise ValueError("로그인 정보가 환경 변수에 설정되지 않았습니다.")
-    
     try:
         # 로그인 시도
         id_field = driver.find_element(By.XPATH, '//*[@id="id"]')
         id_field.click()
-        id_field.send_keys(USERNAME)
+        id_field.send_keys(login_credentials['con_username'])
         time.sleep(1)
         
         pw_field = driver.find_element(By.XPATH, '//*[@id="pw"]')
         pw_field.click()
-        pw_field.send_keys(PASSWORD)
+        pw_field.send_keys(login_credentials['con_password'])
         time.sleep(1)
         
         # 로그인 버튼 클릭
         driver.find_element(By.XPATH, '/html/body/div[3]/div/div[1]/div/div[2]/div[1]/button').click()
-        time.sleep(2)
-
-        time.sleep(2)
-        driver.find_element(By.XPATH,'//*[@id="popup_layout_list"]/div/div[2]/div[3]/div[2]').click()
         time.sleep(2)
         
     except Exception as e:
@@ -131,7 +124,9 @@ def login(driver):
 
 # 로그인 한 번만 실행
 login(driver)
-time.sleep(1)
+time.sleep(2)
+driver.find_element(By.XPATH,'//*[@id="popup_layout_list"]/div/div[2]/div[3]/div[2]').click()
+time.sleep(2)
 driver.find_element(By.XPATH,'//*[@id="side_drop_down_menu"]/div/div[4]/div[9]/div[1]').click()
 time.sleep(1)
 driver.find_element(By.XPATH,'//*[@id="side_drop_down_menu"]/div/div[4]/div[9]/div[2]/div[2]/div[1]/a').click()
@@ -337,8 +332,8 @@ driver.maximize_window()
 
 # 예시: 로그인
 # 로그인 요소를 찾아서 클릭하거나 입력
-PPURIO_USERNAME = os.getenv('PPURIO_LOGIN_USERNAME')
-PPURIO_PASSWORD = os.getenv('PPURIO_LOGIN_PASSWORD')
+PPURIO_USERNAME = login_credentials['ppurio_username']
+PPURIO_PASSWORD = login_credentials['ppurio_password']
 username_input = driver.find_element(By.ID, 'bizwebHeaderUserId')
 username_input.send_keys(PPURIO_USERNAME)  # 아이디 입력
 

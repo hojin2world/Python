@@ -1,8 +1,3 @@
-from dotenv import load_dotenv
-import os
-
-load_dotenv()
-
 # -*- coding: utf-8 -*-
 import locale
 import sys
@@ -32,6 +27,11 @@ from datetime import datetime, timedelta
 
 from selenium.webdriver.support.wait import WebDriverWait
 
+# login_module import 추가
+from login_module import get_login_credentials
+
+# 로그인 정보 받아오기
+login_credentials = get_login_credentials()
 
 def get_configured_driver(download_directory):
     # 오늘 날짜 가져오기
@@ -79,36 +79,29 @@ files = os.listdir(download_directory)
 time.sleep(2)
 
 def login(driver):
-    # URL로 이동
-    url = 'https://www.con.or.kr/'
-    driver.get(url)
-    driver.maximize_window()
-    time.sleep(2)
-    
-    # 팝업 처리
     try:
-        driver.find_element(By.XPATH, '//*[@id="popup_layout_list"]/div/div[2]/div[2]/div/label/span').click()
-        driver.find_element(By.XPATH, '//*[@id="popup_layout_list"]/div/div[2]/div[2]/button').click()
-    except:
-        print("팝업이 없거나 이미 처리되었습니다.")
-    
-    # 환경 변수에서 로그인 정보 가져오기
-    USERNAME = os.getenv('LOGIN_USERNAME')
-    PASSWORD = os.getenv('LOGIN_PASSWORD')
-    
-    if not USERNAME or not PASSWORD:
-        raise ValueError("로그인 정보가 환경 변수에 설정되지 않았습니다.")
-    
-    try:
+        # URL로 이동
+        url = 'https://www.con.or.kr/'
+        driver.get(url)
+        driver.maximize_window()
+        time.sleep(2)
+        
+        # 팝업 처리
+        try:
+            driver.find_element(By.XPATH, '//*[@id="popup_layout_list"]/div/div[2]/div[2]/div/label/span').click()
+            driver.find_element(By.XPATH, '//*[@id="popup_layout_list"]/div/div[2]/div[2]/button').click()
+        except:
+            print("팝업이 없거나 이미 처리되었습니다.")
+        
         # 로그인 시도
         id_field = driver.find_element(By.XPATH, '//*[@id="id"]')
         id_field.click()
-        id_field.send_keys(USERNAME)
+        id_field.send_keys(login_credentials['con_username'])
         time.sleep(1)
         
         pw_field = driver.find_element(By.XPATH, '//*[@id="pw"]')
         pw_field.click()
-        pw_field.send_keys(PASSWORD)
+        pw_field.send_keys(login_credentials['con_password'])
         time.sleep(1)
         
         # 로그인 버튼 클릭

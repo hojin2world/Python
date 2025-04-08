@@ -1,5 +1,8 @@
 from dotenv import load_dotenv
 import os
+import configparser
+import tkinter as tk
+from tkinter import messagebox
 
 load_dotenv()
 
@@ -10,7 +13,7 @@ import os
 from datetime import datetime, timedelta
 from telnetlib import EC
 
-from selenium.common import TimeoutException
+from selenium.common import TimeoutException, NoSuchElementException
 from selenium.webdriver.support import expected_conditions as EC
 import pandas as pd
 import pyautogui
@@ -30,8 +33,67 @@ from datetime import datetime, timedelta
 
 from selenium.webdriver.support.wait import WebDriverWait
 
+from login_module import get_login_credentials
+
+def create_config():
+    config = configparser.ConfigParser()
+    
+    def save_config():
+        config['CON'] = {
+            'username': con_username_entry.get(),
+            'password': con_password_entry.get()
+        }
+        config['PPURIO'] = {
+            'username': ppurio_username_entry.get(),
+            'password': ppurio_password_entry.get()
+        }
+        
+        with open('config.ini', 'w', encoding='utf-8') as configfile:
+            config.write(configfile)
+        messagebox.showinfo("알림", "설정이 저장되었습니다.")
+        root.destroy()
+    
+    root = tk.Tk()
+    root.title("로그인 정보 설정")
+    
+    # CON 로그인 정보
+    tk.Label(root, text="CON 로그인 정보", font=('Helvetica', 10, 'bold')).grid(row=0, column=0, columnspan=2, pady=5)
+    tk.Label(root, text="아이디:").grid(row=1, column=0, padx=5, pady=2)
+    tk.Label(root, text="비밀번호:").grid(row=2, column=0, padx=5, pady=2)
+    
+    con_username_entry = tk.Entry(root)
+    con_password_entry = tk.Entry(root, show="*")
+    con_username_entry.grid(row=1, column=1, padx=5, pady=2)
+    con_password_entry.grid(row=2, column=1, padx=5, pady=2)
+    
+    # PPURIO 로그인 정보
+    tk.Label(root, text="PPURIO 로그인 정보", font=('Helvetica', 10, 'bold')).grid(row=3, column=0, columnspan=2, pady=5)
+    tk.Label(root, text="아이디:").grid(row=4, column=0, padx=5, pady=2)
+    tk.Label(root, text="비밀번호:").grid(row=5, column=0, padx=5, pady=2)
+    
+    ppurio_username_entry = tk.Entry(root)
+    ppurio_password_entry = tk.Entry(root, show="*")
+    ppurio_username_entry.grid(row=4, column=1, padx=5, pady=2)
+    ppurio_password_entry.grid(row=5, column=1, padx=5, pady=2)
+    
+    # 기존 설정 불러오기
+    if os.path.exists('config.ini'):
+        config.read('config.ini', encoding='utf-8')
+        if 'CON' in config:
+            con_username_entry.insert(0, config['CON'].get('username', ''))
+            con_password_entry.insert(0, config['CON'].get('password', ''))
+        if 'PPURIO' in config:
+            ppurio_username_entry.insert(0, config['PPURIO'].get('username', ''))
+            ppurio_password_entry.insert(0, config['PPURIO'].get('password', ''))
+    
+    # 저장 버튼
+    tk.Button(root, text="저장", command=save_config).grid(row=6, column=0, columnspan=2, pady=10)
+    
+    # 창을 화면 중앙에 위치
+    root.eval('tk::PlaceWindow . center')
+    root.mainloop()
+
 def get_configured_driver(download_directory):
-    # 오늘 날짜 가져오기
     today_date = datetime.now().strftime("%Y%m%d")
     file_name = f"{today_date}_과제미제출_연장.xlsx"
 
@@ -41,16 +103,12 @@ def get_configured_driver(download_directory):
     home_directory = os.path.expanduser('~')
     download_directory = os.path.join(home_directory, 'Downloads', 'python')
 
-    # 디렉토리가 있는지 확인
     if not os.path.exists(download_directory):
-        # 디렉토리가 없다면 생성
         os.makedirs(download_directory)
-
-    # 이제 다운로드 디렉토리는 'Downloads' 내부의 'python' 디렉토리를 가리킴
 
     print(download_directory)
 
-    # Chrome 옵션 설정하여 다운로드 디렉토리 및 원하는 파일 이름 설정
+    # Chrome 옵션 설정
     chrome_options = Options()
     chrome_options.add_experimental_option('prefs', {
         'download.default_directory': download_directory,
@@ -61,21 +119,33 @@ def get_configured_driver(download_directory):
         'download.mime_types': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     })
 
-    # 구성된 옵션으로 Chrome WebDriver 초기화
     driver = webdriver.Chrome(options=chrome_options)
     return driver
 
-# 다운로드 디렉토리 설정 및 원하는 파일 이름 지정
+def get_next_weekday(current_date):
+    while True:
+        current_date += timedelta(days=1)
+        if current_date.weekday() < 5:  # 월요일부터 금요일까지
+            return current_date
+
+# 다운로드 디렉토리 설정
 home_directory = os.path.expanduser('~')
 download_directory = os.path.join(home_directory, 'Downloads', 'python')
 
-# 구성된 WebDriver 인스턴스 가져오기
+# WebDriver 인스턴스 가져오기
 driver = get_configured_driver(download_directory)
 
-files = os.listdir(download_directory)
+# 로그인 정보 받아오기
+login_credentials = get_login_credentials()
 
+# URL로 이동
+url = 'https://www.con.or.kr/'
+driver.get(url)
+driver.maximize_window()
 
-# 로그인 함수 정의 (한 번만 실행)
+# 로그인 정보 받아오기
+login_credentials = get_login_credentials()
+
 def login(driver):
     # URL로 이동
     url = 'https://www.con.or.kr/'
@@ -90,23 +160,16 @@ def login(driver):
     except:
         print("팝업이 없거나 이미 처리되었습니다.")
     
-    # 환경 변수에서 로그인 정보 가져오기
-    USERNAME = os.getenv('LOGIN_USERNAME')
-    PASSWORD = os.getenv('LOGIN_PASSWORD')
-    
-    if not USERNAME or not PASSWORD:
-        raise ValueError("로그인 정보가 환경 변수에 설정되지 않았습니다.")
-    
     try:
         # 로그인 시도
         id_field = driver.find_element(By.XPATH, '//*[@id="id"]')
         id_field.click()
-        id_field.send_keys(USERNAME)
+        id_field.send_keys(login_credentials['con_username'])
         time.sleep(1)
         
         pw_field = driver.find_element(By.XPATH, '//*[@id="pw"]')
         pw_field.click()
-        pw_field.send_keys(PASSWORD)
+        pw_field.send_keys(login_credentials['con_password'])
         time.sleep(1)
         
         # 로그인 버튼 클릭
@@ -120,14 +183,46 @@ def login(driver):
 # 로그인 한 번만 실행
 login(driver)
 
-
-
-
+# 로그인 후 팝업 처리
+try:
+    time.sleep(3)  # 페이지 로드를 위해 대기 시간 증가
+    
+    # 페이지가 완전히 로드될 때까지 대기
+    wait = WebDriverWait(driver, 20)
+    wait.until(
+        lambda driver: driver.execute_script('return document.readyState') == 'complete'
+    )
+    
+    # 팝업 닫기 버튼을 명시적으로 기다림
+    popup_close = wait.until(
+        EC.element_to_be_clickable((By.XPATH, '//*[@id="popup_layout_list"]/div/div[2]/div[3]/div[2]'))
+    )
+    popup_close.click()
+    time.sleep(2)
+    
+    # 사이드 메뉴 요소가 나타날 때까지 명시적으로 기다림
+    side_menu = wait.until(
+        EC.presence_of_element_located((By.XPATH, '//*[@id="side_drop_down_menu"]/div/div[4]/div[9]/div[1]'))
+    )
+    # JavaScript로 클릭 실행
+    driver.execute_script("arguments[0].click();", side_menu)
+    time.sleep(2)
+    
+except TimeoutException as e:
+    print(f"요소를 찾을 수 없습니다: {str(e)}")
+    print("페이지를 새로고침하고 다시 시도합니다.")
+    driver.refresh()
+    time.sleep(3)
+    # 새로고침 후 다시 시도
+    side_menu = wait.until(
+        EC.presence_of_element_located((By.XPATH, '//*[@id="side_drop_down_menu"]/div/div[4]/div[9]/div[1]'))
+    )
+    driver.execute_script("arguments[0].click();", side_menu)
+except Exception as e:
+    print(f"오류 발생: {str(e)}")
 
 time.sleep(2)
-driver.find_element(By.XPATH,'//*[@id="popup_layout_list"]/div/div[2]/div[3]/div[2]').click()
-time.sleep(2)
-driver.find_element(By.XPATH,'//*[@id="side_drop_down_menu"]/div/div[4]/div[9]/div[1]').click()
+
 time.sleep(2)
 driver.find_element(By.XPATH,'//*[@id="side_drop_down_menu"]/div/div[4]/div[9]/div[2]/div[2]/div[1]/a').click()
 time.sleep(2)
@@ -138,7 +233,6 @@ time.sleep(2)
 
 input_field = driver.find_element(By.XPATH, '//*[@id="wrapper"]/div[1]/div/div/div[1]/div[2]/div/table/tbody/tr[4]/td[4]/input')
 input_field.click()
-
 
 current_date = datetime.now()
 
@@ -165,13 +259,6 @@ def add_suffix(day):
     else:
         return f"{day:02d}일"
 
-# 토요일과 일요일을 제외한 다음 평일을 반환하는 함수
-def get_next_weekday(current_date):
-    while True:
-        current_date += timedelta(days=1)
-        if current_date.weekday() < 5: # 월요일부터 금요일까지
-            return current_date
-
 # 오늘 날짜를 가져옴
 current_date = datetime.now()
 
@@ -192,7 +279,6 @@ day = next_day.day
 # "월 일[접미사]" 형식으로 날짜를 포맷
 formatted_date = f"{month} {add_suffix(day)}"
 print(formatted_date)
-
 
 time.sleep(1)
 input_field.send_keys(formatted_date)
@@ -239,28 +325,91 @@ else:
     # 파일이 존재하지 않는다면, 에러 메시지 출력
     print(f"Error: {new_file_path} 파일이 존재하지 않습니다.")
 
-# 파일이 다운로드될 때까지 기다림
-# timeout = 10
-# while not os.path.exists(downloaded_file_path) and timeout > 0:
-#    time.sleep(1)
-#    timeout -= 1
+########################
+driver.find_element(By.XPATH, '//*[@id="side_drop_down_menu"]/div/div[4]/div[7]/div[1]').click() #과정개설관리 클릭
+time.sleep(0.5)
+driver.find_element(By.XPATH, '//*[@id="side_drop_down_menu"]/div/div[4]/div[7]/div[2]/div[2]/div[1]').click() #패키지개설관리 클릭
+time.sleep(0.5)
 
-# 파일이 존재하지 않으면 TimeoutException 발생
-# if not os.path.exists(downloaded_file_path):
-#    raise TimeoutException(f"File '{downloaded_file_path}' was not downloaded within {timeout} seconds")
+year_selectbox = Select(driver.find_element(By.XPATH,'//*[@id="wrapper"]/div[1]/div/div/div[1]/div[2]/div/table/tbody/tr[4]/td[2]/div/select'))  # 연도 선택
+year_selectbox.select_by_value('2025')
+time.sleep(1)
+# learningSTY = Select(driver.find_element(By.XPATH,'//*[@id="wrapper"]/div[1]/div/div/div[1]/div[2]/div/table/tbody/tr[1]/td[4]/div/select'))  # 학습방식
+# learningSTY.select_by_value('2')  # 블렌디드러닝
+# time.sleep(1)
+
+gisu_num_input = driver.find_element(By.XPATH,'//*[@id="wrapper"]/div[1]/div/div/div[1]/div[2]/div/table/tbody/tr[5]/td[2]/input')  # 기수이름
+time.sleep(2)
+gisu_num_input.send_keys(formatted_date)
+time.sleep(2)
+
+driver.find_element(By.XPATH, '//*[@id="wrapper"]/div[1]/div/div/div[1]/div[3]/div[2]/div[2]').click()  # 검색 버튼
+time.sleep(2)
+
+driver.find_element(By.XPATH, '//*[@id="wrapper"]/div[1]/div/div/div[2]/div[2]/div[3]').click()  # 엑셀 다운로드 버튼 클릭
+time.sleep(2)
+
+driver.find_element(By.XPATH, '//*[@id="popup_layout_list"]/div/div[2]/div[2]/div[3]/div[3]').click()  #  다운로드 버튼 클릭
+time.sleep(5)
+
+# 파일이 다운로드될 때까지 기다림
+wait = WebDriverWait(driver, 10)
+
+# 다운로드된 파일이 실제로 저장된 경로를 얻어옴
+downloaded_file_path2 = os.path.join(download_directory, 'download.xls')
+
+print(downloaded_file_path2)
+
+# 현재 날짜 가져오기
+today_date = datetime.now().strftime("%Y%m%d")
+
+df = pd.read_excel(downloaded_file_path2)
+
+# 새 파일 경로 설정
+new_file_path2 = downloaded_file_path2.replace('download.xls', f'{today_date}_패키지.xlsx')
+df.to_excel(new_file_path2, index=False)
+
+# 원본 파일 삭제
+if os.path.exists(new_file_path2):
+    os.remove(downloaded_file_path2)
+else:
+    print(f"Error: {new_file_path2} 파일이 존재하지 않습니다.")
+
+######################## 수료처리 파일과 대조 시작#####################
+
+# 수료처리변환 파일 경로
+evaluation_file = os.path.join(download_directory, f'{today_date}_과제미제출_연장.xlsx')
+# 패키지 파일 경로
+package_file = os.path.join(download_directory, f'{today_date}_패키지.xlsx')
+
+# 원본과 사본 엑셀 파일을 읽습니다.
+evaluation_df = pd.read_excel(evaluation_file)
+package_df = pd.read_excel(package_file)
+
+# 원본의 패키지명과 사본의 과목명 컬럼을 비교하여 일치하는 경우 사본의 기수명 컬럼을 원본에 추가합니다.
+# 여기서 '패키지명'은 원본의 컬럼명, '과목명'과 '기수명'은 사본의 컬럼명이라고 가정합니다.
+merged_df = pd.merge(evaluation_df, package_df[['과목명', '기수명']], how='left', left_on='패키지명', right_on='과목명')
+
+# 필요 없는 과목명 컬럼을 제거합니다.
+merged_df.drop(columns=['과목명'], inplace=True)
+
+# 결과를 download_directory에 저장합니다.
+output_path = os.path.join(download_directory, f'{today_date}_검색변환.xlsx')
+merged_df.to_excel(output_path, index=False)
+
+print(f"File saved to {output_path}")
+
 
 print("과제미제출 파일 다운로드 및 형식변환 완료")
 
 ##########################################엑셀 다운 후 패키지
 
-
 # 엑셀 파일 경로
-excel_file = os.path.join(download_directory, f'{today_date}_과제미제출_연장.xlsx')
+excel_file = os.path.join(download_directory, f'{today_date}_검색변환.xlsx')
 # excel_file = rf'C:\Users\user\Downloads\python\{today_date}_진도율90미만(row).xlsx'
 
-
 # 엑셀 파일에서 읽어올 열 이름 지정
-columns_to_read = ['기수번호', '패키지명']
+columns_to_read = ['기수번호', '패키지명','기수명']
 
 df = pd.read_excel(excel_file, usecols=columns_to_read, dtype="str")
 
@@ -291,10 +440,11 @@ print("과제미제출 연장 파일 변환 완료")
 driver.find_element(By.XPATH, '//*[@id="side_drop_down_menu"]/div/div[4]/div[7]/div[1]').click()
 time.sleep(1)
 
+fixed_element = driver.find_element(By.XPATH, '//*[@id="side_drop_down_menu"]/div/div[4]/div[7]/div[1]')
+fixed_element.click()
+time.sleep(1)  # 클릭 후 잠깐 대기
+
 for index, row in df.iterrows():
-
-
-
     current_date = datetime.now()
 
     # 월 번호를 한국어 월 이름으로 매핑하는 사전
@@ -313,7 +463,6 @@ for index, row in df.iterrows():
         12: "12월"
     }
 
-
     # 날짜에 접미사를 추가하는 함수
     def add_suffix(day):
         if 4 <= day <= 20 or 24 <= day <= 30:
@@ -321,14 +470,12 @@ for index, row in df.iterrows():
         else:
             return f"{day:02d}일"
 
-
     # 토요일과 일요일을 제외한 다음 평일을 반환하는 함수
     def get_next_weekday(current_date):
         while True:
             current_date += timedelta(days=1)
             if current_date.weekday() < 5:  # 월요일부터 금요일까지
                 return current_date
-
 
     # 오늘 날짜를 가져옴
     current_date = datetime.now()
@@ -353,8 +500,6 @@ for index, row in df.iterrows():
 
     time.sleep(2)
 
-
-
     # driver.find_element(By.XPATH, '//*[@id="popup_layout_list"]/div/div[2]/div[3]/div[2]').click()
     # time.sleep(1)
     # driver.find_element(By.XPATH, '//*[@id="side_drop_down_menu"]/div/div[4]/div[7]/div[1]').click()
@@ -370,10 +515,11 @@ for index, row in df.iterrows():
 
         fixed_element = driver.find_element(By.XPATH, '//*[@id="side_drop_down_menu"]/div/div[4]/div[7]/div[1]')
         fixed_element.click()
-        time.sleep(1)  # 클릭 후 잠깐 대기
+        time.sleep(1)
 
         driver.find_element(By.XPATH, '//*[@id="side_drop_down_menu"]/div/div[4]/div[7]/div[2]/div[2]/div[1]').click()
         time.sleep(2)  # 클릭 후 잠깐 대기
+
 
     except Exception as e:
         print(f"An error occurred: {e}")
@@ -392,9 +538,12 @@ for index, row in df.iterrows():
     # Get the value from the second column
     value_column_B = row.iloc[1]  # Using iloc for positional indexing
 
+    # Get the value from the second column
+    value_column_C = row.iloc[2]  # Using iloc for positional indexing
 
     print("Value from column A:", value_column_A)
-    print("Value from column B:", value_column_B)
+    #print("Value from column B:", value_column_B)
+    #print("Value from column C:", value_column_C)
 
     selectbox = Select(driver.find_element(By.XPATH,'//*[@id="wrapper"]/div[1]/div/div/div[1]/div[2]/div/table/tbody/tr[4]/td[2]/div/select')) #연도 선택
     selectbox.select_by_value('2025')
@@ -409,10 +558,10 @@ for index, row in df.iterrows():
     input_field.send_keys(value_column_A)
     time.sleep(2)
 
-    gisu_input = driver.find_element(By.XPATH,'//*[@id="wrapper"]/div[1]/div/div/div[1]/div[2]/div/table/tbody/tr[5]/td[2]/input')  # 기수이름
-    time.sleep(2)
-    gisu_input.send_keys(formatted_date)
-    time.sleep(2)
+    # gisu_input = driver.find_element(By.XPATH,'//*[@id="wrapper"]/div[1]/div/div/div[1]/div[2]/div/table/tbody/tr[5]/td[2]/input')  # 기수이름
+    # time.sleep(2)
+    # gisu_input.send_keys(formatted_date)
+    # time.sleep(2)
 
     input_field2  = driver.find_element(By.XPATH, '//*[@id="wrapper"]/div[1]/div/div/div[1]/div[2]/div/table/tbody/tr[6]/td[2]/input') #패키지명
     input_field2.clear()
@@ -420,9 +569,14 @@ for index, row in df.iterrows():
     input_field2.send_keys(value_column_B)
     time.sleep(2)
 
-    driver.find_element(By.XPATH, '//*[@id="wrapper"]/div[1]/div/div/div[1]/div[3]/div[2]/div[2]').click() #검색 버튼
+    gisu_name_field  = driver.find_element(By.XPATH, '//*[@id="wrapper"]/div[1]/div/div/div[1]/div[2]/div/table/tbody/tr[5]/td[2]/input')  # 기수이름
+    gisu_name_field.clear()
+    time.sleep(2)
+    gisu_name_field.send_keys(value_column_C)
     time.sleep(2)
 
+    driver.find_element(By.XPATH, '//*[@id="wrapper"]/div[1]/div/div/div[1]/div[3]/div[2]/div[2]').click() #검색 버튼
+    time.sleep(2)
 
     div_element = driver.find_element(By.XPATH,'//*[@id="wrapper"]/div[1]/div/div/div[3]/div[1]/div/table/tbody/tr[2]/td[15]')
     # Get the text value of the div element
@@ -438,7 +592,6 @@ for index, row in df.iterrows():
 
     driver.find_element(By.XPATH, '//*[@id="wrapper"]/div[1]/div/div/div[3]/div[1]/div/table/tbody/tr[2]/td[9]').click()
     time.sleep(2)
-
 
     driver.find_element(By.XPATH, '//*[@id="wrapper"]/div[1]/div/div/div/div[2]/div[2]/div[9]/div[1]/div').click() #평가 출제 및 채점 클릭
     time.sleep(2)
@@ -513,7 +666,6 @@ for index, row in df.iterrows():
     # except Exception as e:
     #     print(f"체크박스 상태를 확인할 수 없거나 오류가 발생했습니다: {e}")
 
-
     #current_date_time = datetime.now()
     #formatted_date_time = current_date_time.strftime("%Y-%m-%d %H:%M:%S")
     deadline_field = driver.find_element(By.XPATH,'//*[@id="wrapper"]/div[1]/div/div/div/div[2]/div[1]/div/div/div[1]/div[3]/div[2]/div/table/tbody/tr[1]/td[4]/div/div/div[3]/div/input')
@@ -522,8 +674,6 @@ for index, row in df.iterrows():
     #input_field.send_keys(date_str)
     time.sleep(2)
     print("연장제출기한:" + date_str)
-
-
 
     review_end_day = driver.find_element(By.XPATH,'//*[@id="wrapper"]/div[1]/div/div/div/div[2]/div[1]/div/div/div[1]/div[3]/div[2]/div/table/tbody/tr[3]/td[4]/div/div/div[3]/div/input')  # 결과 리뷰 기간
     review_end_day.clear()

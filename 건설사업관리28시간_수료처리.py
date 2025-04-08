@@ -1,4 +1,10 @@
-from login_module import get_login_credentials
+from dotenv import load_dotenv
+import os
+import configparser
+import tkinter as tk
+from tkinter import messagebox
+
+load_dotenv()
 
 import locale
 import sys
@@ -28,10 +34,12 @@ from datetime import datetime, timedelta
 
 from selenium.webdriver.support.wait import WebDriverWait
 
+from login_module import get_login_credentials
+
 def get_configured_driver(download_directory):
     # 오늘 날짜 가져오기
     today_date = datetime.now().strftime("%Y%m%d")
-    file_name = f"{today_date}_수료처리.xlsx"
+    file_name = f"{today_date}_28시간_수료처리.xlsx"
 
     print("파일 이름:", file_name)
 
@@ -99,6 +107,7 @@ driver = get_configured_driver(download_directory)
 files = os.listdir(download_directory)
 
 
+
 # URL로 이동
 url = 'https://www.con.or.kr/'
 driver.get(url)
@@ -161,7 +170,7 @@ time.sleep(1)
 gisu_name_input_field = driver.find_element(By.XPATH, '//*[@id="wrapper"]/div[1]/div/div/div[1]/div[2]/div/table/tbody/tr[4]/td[4]/input')
 gisu_name_input_field.click()
 time.sleep(1)
-gisu_name_input_field.send_keys("16시간")
+gisu_name_input_field.send_keys("28시간")
 time.sleep(1)
 
 gisu_number_field = driver.find_element(By.XPATH, '//*[@id="wrapper"]/div[1]/div/div/div[1]/div[2]/div/table/tbody/tr[4]/td[6]/input')
@@ -198,14 +207,14 @@ df = pd.read_excel(downloaded_file_path)
 # 'AE' 열의 값이 '수료'인 행만 추출하여 새로운 데이터프레임 생성
 completed_df = df[df['수료 여부'] == '수료']
 
-new_file_path = downloaded_file_path.replace('download.xls', f'{today_date}_16시간_수료처리.xlsx')
+new_file_path = downloaded_file_path.replace('download.xls', f'{today_date}_28시간_수료처리.xlsx')
 df.to_excel(new_file_path, index=False)
 
 # 변경 전 파일 경로
 old_file_path = os.path.join(download_directory, 'download.xls')
 
 # 변경 후 파일 경로
-new_file_path = os.path.join(download_directory, f'{today_date}_16시간_수료처리.xlsx')
+new_file_path = os.path.join(download_directory, f'{today_date}_28시간_수료처리.xlsx')
 
 # 변경 후 파일이 존재하는지 확인
 if os.path.exists(new_file_path):
@@ -217,7 +226,7 @@ else:
     
     
 # 엑셀 파일 경로
-excel_file = os.path.join(download_directory, f'{today_date}_16시간_수료처리.xlsx')
+excel_file = os.path.join(download_directory, f'{today_date}_28시간_수료처리.xlsx')
 # excel_file = rf'C:\Users\user\Downloads\python\{today_date}_진도율90미만(row).xlsx'
 
 
@@ -244,7 +253,7 @@ today_date = datetime.now().strftime("%Y%m%d")
 
 # 새로운 엑셀 파일에 저장
 #new_excel_file = r'C:\Users\user\Downloads\python\{}_뿌리오_진도율미달.xlsx'.format(today_date)
-new_excel_file = rf'{download_directory}\{today_date}_16시간_수료처리_변환.xlsx'
+new_excel_file = rf'{download_directory}\{today_date}_28시간_수료처리_변환.xlsx'
 # 새로운 엑셀 파일 경로 및 파일 이름
 df.to_excel(new_excel_file, index=False)  # index=False로 설정하여 인덱스 열을 포함하지 않음
 
@@ -265,7 +274,7 @@ time.sleep(1)
 
 gisu_name_input = driver.find_element(By.XPATH,'//*[@id="wrapper"]/div[1]/div/div/div[1]/div[2]/div/table/tbody/tr[5]/td[2]/input')  # 기수이름
 time.sleep(2)
-gisu_name_input.send_keys("16시간")
+gisu_name_input.send_keys("28시간")
 time.sleep(2)
 
 # 기존 코드에서 기수 관련 부분을 수정
@@ -302,14 +311,14 @@ today_date = datetime.now().strftime("%Y%m%d")
 df = pd.read_excel(downloaded_file_path2)
 
 
-new_file_path = downloaded_file_path2.replace('download.xls', f'{today_date}_16시간_패키지.xlsx')
+new_file_path = downloaded_file_path2.replace('download.xls', f'{today_date}_28시간_패키지.xlsx')
 df.to_excel(new_file_path, index=False)
 
 # 변경 전 파일 경로
 old_file_path = os.path.join(download_directory, 'download.xls')
 
 # 변경 후 파일 경로
-new_file_path = os.path.join(download_directory, f'{today_date}_16시간_패키지.xlsx')
+new_file_path = os.path.join(download_directory, f'{today_date}_28시간_패키지.xlsx')
 
 # 변경 후 파일이 존재하는지 확인
 if os.path.exists(new_file_path):
@@ -320,7 +329,7 @@ else:
     print(f"Error: {new_file_path} 파일이 존재하지 않습니다.")
 
 # 엑셀 파일 경로
-excel_file = os.path.join(download_directory, f'{today_date}_16시간_패키지.xlsx')
+excel_file = os.path.join(download_directory, f'{today_date}_28시간_패키지.xlsx')
 
 
 
@@ -336,9 +345,9 @@ excel_file = os.path.join(download_directory, f'{today_date}_16시간_패키지.
 ######################## 수료처리 파일과 대조 시작#####################
 
 # 수료처리변환 파일 경로
-evaluation_file = os.path.join(download_directory, f'{today_date}_16시간_수료처리_변환.xlsx')
+evaluation_file = os.path.join(download_directory, f'{today_date}_28시간_수료처리_변환.xlsx')
 # 패키지 파일 경로
-package_file = os.path.join(download_directory, f'{today_date}_16시간_패키지.xlsx')    
+package_file = os.path.join(download_directory, f'{today_date}_28시간_패키지.xlsx')    
 
 # 원본과 사본 엑셀 파일을 읽습니다.
 evaluation_df = pd.read_excel(evaluation_file)
@@ -352,7 +361,7 @@ merged_df = pd.merge(evaluation_df, package_df[['과목명', '기수명']], how=
 merged_df.drop(columns=['과목명'], inplace=True)
 
 # 결과를 download_directory에 저장합니다.
-output_path = os.path.join(download_directory, f'{today_date}_16시간_검색변환.xlsx')
+output_path = os.path.join(download_directory, f'{today_date}_28시간_검색변환.xlsx')
 merged_df.to_excel(output_path, index=False)
 
 print(f"File saved to {output_path}")
@@ -362,7 +371,7 @@ print(f"File saved to {output_path}")
 
 
 # 엑셀 파일 경로
-excel_file = os.path.join(download_directory, f'{today_date}_16시간_검색변환.xlsx')
+excel_file = os.path.join(download_directory, f'{today_date}_28시간_검색변환.xlsx')
 
 # 엑셀 파일을 pandas DataFrame으로 읽어오기
 df = pd.read_excel(excel_file)
@@ -435,7 +444,7 @@ for index, row in df.iterrows():
 
 
     # 엑셀 파일 경로
-    excel_file = os.path.join(download_directory, f'{today_date}_16시간_검색변환.xlsx')
+    excel_file = os.path.join(download_directory, f'{today_date}_28시간_검색변환.xlsx')
 
     # 엑셀 파일을 pandas DataFrame으로 읽어오기
     df = pd.read_excel(excel_file)
@@ -585,7 +594,7 @@ for index, row in df.iterrows():
             
             # 현재 날짜를 파일명에 포함
             today_date = datetime.now().strftime("%Y%m%d")
-            file_name = f'{today_date}_미수료자목록.xlsx'
+            file_name = f'{today_date}_28시간_미수료자목록.xlsx'
             incomplete_file_path = os.path.join(save_dir, file_name)
             
             print(f"저장할 파일 경로: {incomplete_file_path}")
@@ -627,7 +636,7 @@ for index, row in df.iterrows():
 
 
 # 엑셀 파일 경로 (뿌리오 변환용)
-excel_file = os.path.join(download_directory, f'{today_date}_16시간_수료처리.xlsx')
+excel_file = os.path.join(download_directory, f'{today_date}_28시간_수료처리.xlsx')
 
 # 파일 존재 여부 확인
 if not os.path.exists(excel_file):
@@ -659,7 +668,7 @@ print(df.head())
 today_date = datetime.now().strftime("%Y%m%d")
 
 # 새로운 엑셀 파일에 저장
-new_excel_file = rf'{download_directory}\{today_date}_{first_gisu_number}_수료증발행안내(16시간).xlsx'
+new_excel_file = rf'{download_directory}\{today_date}_{first_gisu_number}_수료증발행안내(28시간).xlsx'
 df.to_excel(new_excel_file, index=False)
 
 print("수료증 파일 뿌리오 변환 완료")
@@ -760,7 +769,7 @@ time.sleep(5)
 
 
 # 파일 경로 설정
-file_path = os.path.join(download_directory, rf"{today_date}_{first_gisu_number}_수료증발행안내(16시간).xlsx")
+file_path = os.path.join(download_directory, rf"{today_date}_{first_gisu_number}_수료증발행안내(28시간).xlsx")
 print(file_input)
 print(file_path)
 

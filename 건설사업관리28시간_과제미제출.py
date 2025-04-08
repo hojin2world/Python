@@ -1,9 +1,9 @@
 from dotenv import load_dotenv
 import os
-
-load_dotenv()
-
-# -*- coding: utf-8 -*-
+import configparser
+import tkinter as tk
+from tkinter import messagebox
+from login_module import get_login_credentials
 import locale
 import time
 import os
@@ -34,7 +34,7 @@ from selenium.webdriver.support.wait import WebDriverWait
 def get_configured_driver(download_directory):
     # 오늘 날짜 가져오기
     today_date = datetime.now().strftime("%Y%m%d")
-    file_name = f"{today_date}_건설사업관리 일반 계속교육(28시간) [토목 · 도시교통 · 안전관리] 특급 패키지 1_과제미제출.xlsx"
+    file_name = f"{today_date}_건설사업관리 일반 계속교육(28시간)_과제미제출.xlsx"
 
     print("파일 이름:", file_name)
 
@@ -76,14 +76,101 @@ driver = get_configured_driver(download_directory)
 files = os.listdir(download_directory)
 
 # URL 변경
+
+# 로그인 정보 받아오기
+login_credentials = get_login_credentials()
+
 # URL로 이동
+time.sleep(2)
 url = 'https://www.con.or.kr/'
 driver.get(url)
 driver.maximize_window()
 
-time.sleep(2)
+def create_config():
+    config = configparser.ConfigParser()
+    
+    def save_config():
+        config['CON'] = {
+            'username': con_username_entry.get(),
+            'password': con_password_entry.get()
+        }
+        config['PPURIO'] = {
+            'username': ppurio_username_entry.get(),    
+            'password': ppurio_password_entry.get()
+        }
+        
+        with open('config.ini', 'w', encoding='utf-8') as configfile:
+            config.write(configfile)
+        messagebox.showinfo("알림", "설정이 저장되었습니다.")
+        root.destroy()
+    
+    root = tk.Tk()
+    root.title("로그인 정보 설정")
+    
+    # CON 로그인 정보
+    tk.Label(root, text="CON 로그인 정보", font=('Helvetica', 10, 'bold')).grid(row=0, column=0, columnspan=2, pady=5)
+    tk.Label(root, text="아이디:").grid(row=1, column=0, padx=5, pady=2)
+    tk.Label(root, text="비밀번호:").grid(row=2, column=0, padx=5, pady=2)
+    
+    con_username_entry = tk.Entry(root)
+    con_password_entry = tk.Entry(root, show="*")
+    con_username_entry.grid(row=1, column=1, padx=5, pady=2)
+    con_password_entry.grid(row=2, column=1, padx=5, pady=2)
+    
+    # PPURIO 로그인 정보
+    tk.Label(root, text="PPURIO 로그인 정보", font=('Helvetica', 10, 'bold')).grid(row=3, column=0, columnspan=2, pady=5)
+    tk.Label(root, text="아이디:").grid(row=4, column=0, padx=5, pady=2)
+    tk.Label(root, text="비밀번호:").grid(row=5, column=0, padx=5, pady=2)
+    
+    ppurio_username_entry = tk.Entry(root)
+    ppurio_password_entry = tk.Entry(root, show="*")
+    ppurio_username_entry.grid(row=4, column=1, padx=5, pady=2)
+    ppurio_password_entry.grid(row=5, column=1, padx=5, pady=2)
+    
+    # 기존 설정 불러오기
+    if os.path.exists('config.ini'):
+        config.read('config.ini', encoding='utf-8')
+        if 'CON' in config:
+            con_username_entry.insert(0, config['CON'].get('username', ''))
+            con_password_entry.insert(0, config['CON'].get('password', ''))
+        if 'PPURIO' in config:
+            ppurio_username_entry.insert(0, config['PPURIO'].get('username', ''))
+            ppurio_password_entry.insert(0, config['PPURIO'].get('password', ''))
+    
+    # 저장 버튼
+    tk.Button(root, text="저장", command=save_config).grid(row=6, column=0, columnspan=2, pady=10)
+    
+    # 창을 화면 중앙에 위치
+    root.eval('tk::PlaceWindow . center')
+    root.mainloop()
 
+def get_login_credentials():
+    config = configparser.ConfigParser()
+    
+    # config.ini 파일이 없으면 생성
+    if not os.path.exists('config.ini'):
+        create_config()
+    
+    # config.ini 파일 읽기
+    config.read('config.ini', encoding='utf-8')
+    
+    # 설정이 없거나 불완전한 경우 설정 창 표시
+    if not ('CON' in config and 'PPURIO' in config and
+            all(config['CON'].get(key) for key in ['username', 'password']) and
+            all(config['PPURIO'].get(key) for key in ['username', 'password'])):
+        create_config()
+        config.read('config.ini', encoding='utf-8')
+    
+    return {
+        'con_username': config['CON']['username'],
+        'con_password': config['CON']['password'],
+        'ppurio_username': config['PPURIO']['username'],
+        'ppurio_password': config['PPURIO']['password']
+    }
 
+# 로그인 정보 받아오기
+login_credentials = get_login_credentials()
+# 로그인 함수 수정
 def login(driver):
     # URL로 이동
     url = 'https://www.con.or.kr/'
@@ -98,31 +185,20 @@ def login(driver):
     except:
         print("팝업이 없거나 이미 처리되었습니다.")
     
-    # 환경 변수에서 로그인 정보 가져오기
-    USERNAME = os.getenv('LOGIN_USERNAME')
-    PASSWORD = os.getenv('LOGIN_PASSWORD')
-    
-    if not USERNAME or not PASSWORD:
-        raise ValueError("로그인 정보가 환경 변수에 설정되지 않았습니다.")
-    
     try:
         # 로그인 시도
         id_field = driver.find_element(By.XPATH, '//*[@id="id"]')
         id_field.click()
-        id_field.send_keys(USERNAME)
+        id_field.send_keys(login_credentials['con_username'])
         time.sleep(1)
         
         pw_field = driver.find_element(By.XPATH, '//*[@id="pw"]')
         pw_field.click()
-        pw_field.send_keys(PASSWORD)
+        pw_field.send_keys(login_credentials['con_password'])
         time.sleep(1)
         
         # 로그인 버튼 클릭
         driver.find_element(By.XPATH, '/html/body/div[3]/div/div[1]/div/div[2]/div[1]/button').click()
-        time.sleep(2)
-
-        time.sleep(2)
-        driver.find_element(By.XPATH,'//*[@id="popup_layout_list"]/div/div[2]/div[3]/div[2]').click()
         time.sleep(2)
         
     except Exception as e:
@@ -131,7 +207,9 @@ def login(driver):
 
 # 로그인 한 번만 실행
 login(driver)
-time.sleep(1)
+time.sleep(2)
+driver.find_element(By.XPATH,'//*[@id="popup_layout_list"]/div/div[2]/div[3]/div[2]').click()
+time.sleep(2)
 driver.find_element(By.XPATH,'//*[@id="side_drop_down_menu"]/div/div[4]/div[9]/div[1]').click()
 time.sleep(1)
 driver.find_element(By.XPATH,'//*[@id="side_drop_down_menu"]/div/div[4]/div[9]/div[2]/div[2]/div[1]/a').click()
@@ -264,14 +342,14 @@ print(downloaded_file_path)
 today_date = datetime.now().strftime("%Y%m%d")
 
 df = pd.read_excel(downloaded_file_path)
-new_file_path = downloaded_file_path.replace('download.xls', f'{today_date}_건설사업관리 일반 계속교육(28시간) [토목 · 도시교통 · 안전관리] 특급 패키지 1_미제출.xlsx')
+new_file_path = downloaded_file_path.replace('download.xls', f'{today_date}_건설사업관리 일반 계속교육(28시간)_과제_미제출.xlsx')
 df.to_excel(new_file_path, index=False)
 
 # 변경 전 파일 경로
 old_file_path = os.path.join(download_directory, 'download.xls')
 
 # 변경 후 파일 경로
-new_file_path = os.path.join(download_directory, f'{today_date}_건설사업관리 일반 계속교육(28시간) [토목 · 도시교통 · 안전관리] 특급 패키지 1_미제출.xlsx')
+new_file_path = os.path.join(download_directory, f'{today_date}_건설사업관리 일반 계속교육(28시간)_과제_미제출.xlsx')
 
 # 변경 후 파일이 존재하는지 확인
 if os.path.exists(new_file_path):
@@ -287,7 +365,7 @@ print("과제미제출 파일 다운로드 및 형식변환 완료")
 
 
 # 엑셀 파일 경로
-excel_file = os.path.join(download_directory, f'{today_date}_건설사업관리 일반 계속교육(28시간) [토목 · 도시교통 · 안전관리] 특급 패키지 1_미제출.xlsx')
+excel_file = os.path.join(download_directory, f'{today_date}_건설사업관리 일반 계속교육(28시간)_과제_미제출.xlsx')
 # excel_file = rf'C:\Users\user\Downloads\python\{today_date}_진도율90미만(row).xlsx'
 
 # 엑셀 파일에서 읽어올 열 이름 지정
@@ -318,7 +396,7 @@ today_date = datetime.now().strftime("%Y-%m-%d")
 
 # 새로운 엑셀 파일에 저장
 #new_excel_file = r'C:\Users\user\Downloads\python\{}_뿌리오_진도율미달.xlsx'.format(today_date)
-new_excel_file = rf'{download_directory}\{today_date}_뿌리오_건설사업관리 일반 계속교육(28시간) [토목 · 도시교통 · 안전관리] 특급 패키지 1_미제출.xlsx'
+new_excel_file = rf'{download_directory}\{today_date}_뿌리오_건설사업관리 일반 계속교육(28시간)_과제_미제출.xlsx'
 # 새로운 엑셀 파일 경로 및 파일 이름
 df.to_excel(new_excel_file, index=False)  # index=False로 설정하여 인덱스 열을 포함하지 않음
 
@@ -341,15 +419,12 @@ new_url = 'https://www.bizppurio.com/'
 driver.get(new_url)
 driver.maximize_window()
 
-# 예시: 로그인
-# 로그인 요소를 찾아서 클릭하거나 입력
-PPURIO_USERNAME = os.getenv('PPURIO_LOGIN_USERNAME')
-PPURIO_PASSWORD = os.getenv('PPURIO_LOGIN_PASSWORD')
+# PPURIO 로그인 부분 수정
 username_input = driver.find_element(By.ID, 'bizwebHeaderUserId')
-username_input.send_keys(PPURIO_USERNAME)  # 아이디 입력
+username_input.send_keys(login_credentials['ppurio_username'])
 
 password_input = driver.find_element(By.ID, 'bizwebHeaderUserPwd')
-password_input.send_keys(PPURIO_PASSWORD)  # 비밀번호 입력
+password_input.send_keys(login_credentials['ppurio_password'])
 
 login_button = driver.find_element(By.XPATH, '//*[@id="bizwebHeaderBtnLogin"]')
 login_button.click()
@@ -425,7 +500,7 @@ file_input = driver.find_element(By.CSS_SELECTOR, 'input[type="file"]')
 time.sleep(5)
 
 # 파일 경로 설정
-file_path = rf"C:\Users\user\Downloads\python\{today_date}_뿌리오_건설사업관리 일반 계속교육(28시간) [토목 · 도시교통 · 안전관리] 특급 패키지 1_미제출.xlsx"
+file_path = rf"C:\Users\user\Downloads\python\{today_date}_뿌리오_건설사업관리 일반 계속교육(28시간)_과제_미제출.xlsx"
 print(file_input)
 print(file_path)
 

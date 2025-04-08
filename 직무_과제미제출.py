@@ -1,9 +1,6 @@
 from dotenv import load_dotenv
 import os
-
-load_dotenv()
-
-# -*- coding: utf-8 -*-
+from login_module import get_login_credentials
 import locale
 import time
 import os
@@ -32,27 +29,21 @@ from datetime import datetime, timedelta
 from selenium.webdriver.support.wait import WebDriverWait
 
 def get_configured_driver(download_directory):
-    # Get today's date
     today_date = datetime.now().strftime("%Y%m%d")
     file_name = f"{today_date}_과제미제출.xlsx"
 
     print("File name:", file_name)
 
-
     # 다운로드 디렉토리 설정
     home_directory = os.path.expanduser('~')
     download_directory = os.path.join(home_directory, 'Downloads', 'python')
 
-    # Check if the directory exists
     if not os.path.exists(download_directory):
-        # Create the directory if it doesn't exist
         os.makedirs(download_directory)
-
-    # Now download_directory points to the 'python' directory inside 'Downloads'
 
     print(download_directory)
 
-    # Configure Chrome options to change the download directory and set the desired file name
+    # Chrome 옵션 설정
     chrome_options = Options()
     chrome_options.add_experimental_option('prefs', {
         'download.default_directory': download_directory,
@@ -63,27 +54,29 @@ def get_configured_driver(download_directory):
         'download.mime_types': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     })
 
-    # Initialize Chrome WebDriver with configured options
     driver = webdriver.Chrome(options=chrome_options)
     return driver
 
-# Set the download directory and specify desired file name
+def get_next_weekday(current_date):
+    while True:
+        current_date += timedelta(days=1)
+        if current_date.weekday() < 5:  # 월요일부터 금요일까지
+            return current_date
+
+# 다운로드 디렉토리 설정
 home_directory = os.path.expanduser('~')
 download_directory = os.path.join(home_directory, 'Downloads', 'python')
 
-
-# Get the configured WebDriver instance
-
+# WebDriver 인스턴스 가져오기
 driver = get_configured_driver(download_directory)
 
-files = os.listdir(download_directory)
+# 로그인 정보 받아오기
+login_credentials = get_login_credentials()
 
-
-# Navigate to the URL
+# URL로 이동
 url = 'https://www.con.or.kr/'
 driver.get(url)
 driver.maximize_window()
-
 time.sleep(2)
 
 def login(driver):
@@ -100,31 +93,20 @@ def login(driver):
     except:
         print("팝업이 없거나 이미 처리되었습니다.")
     
-    # 환경 변수에서 로그인 정보 가져오기
-    USERNAME = os.getenv('LOGIN_USERNAME')
-    PASSWORD = os.getenv('LOGIN_PASSWORD')
-    
-    if not USERNAME or not PASSWORD:
-        raise ValueError("로그인 정보가 환경 변수에 설정되지 않았습니다.")
-    
     try:
         # 로그인 시도
         id_field = driver.find_element(By.XPATH, '//*[@id="id"]')
         id_field.click()
-        id_field.send_keys(USERNAME)
+        id_field.send_keys(login_credentials['con_username'])
         time.sleep(1)
         
         pw_field = driver.find_element(By.XPATH, '//*[@id="pw"]')
         pw_field.click()
-        pw_field.send_keys(PASSWORD)
+        pw_field.send_keys(login_credentials['con_password'])
         time.sleep(1)
         
         # 로그인 버튼 클릭
         driver.find_element(By.XPATH, '/html/body/div[3]/div/div[1]/div/div[2]/div[1]/button').click()
-        time.sleep(2)
-
-        time.sleep(2)
-        driver.find_element(By.XPATH,'//*[@id="popup_layout_list"]/div/div[2]/div[3]/div[2]').click()
         time.sleep(2)
         
     except Exception as e:
@@ -133,6 +115,9 @@ def login(driver):
 
 # 로그인 한 번만 실행
 login(driver)
+time.sleep(2)
+driver.find_element(By.XPATH,'//*[@id="popup_layout_list"]/div/div[2]/div[3]/div[2]').click()
+time.sleep(2)
 driver.find_element(By.XPATH,'//*[@id="side_drop_down_menu"]/div/div[4]/div[9]/div[1]').click()  #학습자 평가 관리 클릭
 time.sleep(1)
 driver.find_element(By.XPATH,'//*[@id="side_drop_down_menu"]/div/div[4]/div[9]/div[2]/div[2]/div[1]/a').click() #학습자 모니터링 클릭
@@ -306,35 +291,28 @@ new_url = 'https://www.bizppurio.com/'
 driver.get(new_url)
 driver.maximize_window()
 
-# 예시: 로그인
-# 로그인 요소를 찾아서 클릭하거나 입력
-PPURIO_USERNAME = os.getenv('PPURIO_LOGIN_USERNAME')
-PPURIO_PASSWORD = os.getenv('PPURIO_LOGIN_PASSWORD')
-username_input = driver.find_element(By.ID, 'bizwebHeaderUserId')
-username_input.send_keys(PPURIO_USERNAME)  # 아이디 입력
+# PPURIO 로그인 부분 수정
+def ppurio_login(driver):
+    username_input = driver.find_element(By.ID, 'bizwebHeaderUserId')
+    username_input.send_keys(login_credentials['ppurio_username'])
 
-password_input = driver.find_element(By.ID, 'bizwebHeaderUserPwd')
-password_input.send_keys(PPURIO_PASSWORD)  # 비밀번호 입력
+    password_input = driver.find_element(By.ID, 'bizwebHeaderUserPwd')
+    password_input.send_keys(login_credentials['ppurio_password'])
 
-login_button = driver.find_element(By.XPATH, '//*[@id="bizwebHeaderBtnLogin"]')
-login_button.click()
-session_cookies = driver.get_cookies()
+    login_button = driver.find_element(By.XPATH, '//*[@id="bizwebHeaderBtnLogin"]')
+    login_button.click()
 
-# 페이지 로딩을 위해 충분한 시간을 주거나 필요한 요소에 대한 대기 조건을 추가
-time.sleep(2)  # 필요한 경우 시간 조정
+    # 비밀번호 만료 연장 처리
+    try:
+        element = driver.find_element(By.XPATH, '//*[@id="bizwebBtnWebPasswdExpiredateDelay"]')
+        element.click()
+        print("비밀번호 연장 처리")
+    except NoSuchElementException:
+        print("비밀번호 연장 처리 없음")
 
+    time.sleep(2)
 
-# 비밀번호 만료 연장 버튼이 존재하면 클릭, 존재하지 않으면 패스
-xpath = '//*[@id="bizwebBtnWebPasswdExpiredateDelay"]'
-
-try:
-    element = driver.find_element(By.XPATH, xpath)
-    element.click()
-    print("비밀번호 연장 처리")
-except NoSuchElementException:
-    print("비밀번호 연장 처리 없음")
-time.sleep(2)
-# 로그인 후에는 Selenium을 사용하여 웹 사이트에서 추가 작업을 계속할 수 있습니다.
+ppurio_login(driver)
 
 # 메세지 전송 버튼 클릭
 driver.find_element(By.XPATH, '//*[@id="header"]/div[1]/div[1]/ul/li[2]/a').click()

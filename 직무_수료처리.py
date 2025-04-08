@@ -1,14 +1,14 @@
 from dotenv import load_dotenv
 import os
-
-load_dotenv()
-
 import locale
 import sys
 import time
 import os
 from datetime import datetime, timedelta
 from telnetlib import EC
+import tkinter as tk
+from tkinter import messagebox
+import configparser
 
 from selenium.common import TimeoutException, NoSuchElementException
 from selenium.webdriver.support import expected_conditions as EC
@@ -30,6 +30,7 @@ from datetime import datetime
 from datetime import datetime, timedelta
 
 from selenium.webdriver.support.wait import WebDriverWait
+from login_module import get_login_credentials
 
 def get_configured_driver(download_directory):
     # 오늘 날짜 가져오기
@@ -84,6 +85,91 @@ time.sleep(2)
 
 
 
+def create_config():
+    config = configparser.ConfigParser()
+    
+    def save_config():
+        config['CON'] = {
+            'username': con_username_entry.get(),
+            'password': con_password_entry.get()
+        }
+        config['PPURIO'] = {
+            'username': ppurio_username_entry.get(),
+            'password': ppurio_password_entry.get()
+        }
+        
+        with open('config.ini', 'w', encoding='utf-8') as configfile:
+            config.write(configfile)
+        messagebox.showinfo("알림", "설정이 저장되었습니다.")
+        root.destroy()
+    
+    root = tk.Tk()
+    root.title("로그인 정보 설정")
+    
+    # CON 로그인 정보
+    tk.Label(root, text="CON 로그인 정보", font=('Helvetica', 10, 'bold')).grid(row=0, column=0, columnspan=2, pady=5)
+    tk.Label(root, text="아이디:").grid(row=1, column=0, padx=5, pady=2)
+    tk.Label(root, text="비밀번호:").grid(row=2, column=0, padx=5, pady=2)
+    
+    con_username_entry = tk.Entry(root)
+    con_password_entry = tk.Entry(root, show="*")
+    con_username_entry.grid(row=1, column=1, padx=5, pady=2)
+    con_password_entry.grid(row=2, column=1, padx=5, pady=2)
+    
+    # PPURIO 로그인 정보
+    tk.Label(root, text="PPURIO 로그인 정보", font=('Helvetica', 10, 'bold')).grid(row=3, column=0, columnspan=2, pady=5)
+    tk.Label(root, text="아이디:").grid(row=4, column=0, padx=5, pady=2)
+    tk.Label(root, text="비밀번호:").grid(row=5, column=0, padx=5, pady=2)
+    
+    ppurio_username_entry = tk.Entry(root)
+    ppurio_password_entry = tk.Entry(root, show="*")
+    ppurio_username_entry.grid(row=4, column=1, padx=5, pady=2)
+    ppurio_password_entry.grid(row=5, column=1, padx=5, pady=2)
+    
+    # 기존 설정 불러오기
+    if os.path.exists('config.ini'):
+        config.read('config.ini', encoding='utf-8')
+        if 'CON' in config:
+            con_username_entry.insert(0, config['CON'].get('username', ''))
+            con_password_entry.insert(0, config['CON'].get('password', ''))
+        if 'PPURIO' in config:
+            ppurio_username_entry.insert(0, config['PPURIO'].get('username', ''))
+            ppurio_password_entry.insert(0, config['PPURIO'].get('password', ''))
+    
+    # 저장 버튼
+    tk.Button(root, text="저장", command=save_config).grid(row=6, column=0, columnspan=2, pady=10)
+    
+    # 창을 화면 중앙에 위치
+    root.eval('tk::PlaceWindow . center')
+    root.mainloop()
+
+def get_login_credentials():
+    config = configparser.ConfigParser()
+    
+    # config.ini 파일이 없으면 생성
+    if not os.path.exists('config.ini'):
+        create_config()
+    
+    # config.ini 파일 읽기
+    config.read('config.ini', encoding='utf-8')
+    
+    # 설정이 없거나 불완전한 경우 설정 창 표시
+    if not ('CON' in config and 'PPURIO' in config and
+            all(config['CON'].get(key) for key in ['username', 'password']) and
+            all(config['PPURIO'].get(key) for key in ['username', 'password'])):
+        create_config()
+        config.read('config.ini', encoding='utf-8')
+    
+    return {
+        'con_username': config['CON']['username'],
+        'con_password': config['CON']['password'],
+        'ppurio_username': config['PPURIO']['username'],
+        'ppurio_password': config['PPURIO']['password']
+    }
+
+# 로그인 정보 받아오기
+login_credentials = get_login_credentials()
+
 def login(driver):
     # URL로 이동
     url = 'https://www.con.or.kr/'
@@ -98,23 +184,16 @@ def login(driver):
     except:
         print("팝업이 없거나 이미 처리되었습니다.")
     
-    # 환경 변수에서 로그인 정보 가져오기
-    USERNAME = os.getenv('LOGIN_USERNAME')
-    PASSWORD = os.getenv('LOGIN_PASSWORD')
-    
-    if not USERNAME or not PASSWORD:
-        raise ValueError("로그인 정보가 환경 변수에 설정되지 않았습니다.")
-    
     try:
         # 로그인 시도
         id_field = driver.find_element(By.XPATH, '//*[@id="id"]')
         id_field.click()
-        id_field.send_keys(USERNAME)
+        id_field.send_keys(login_credentials['con_username'])
         time.sleep(1)
         
         pw_field = driver.find_element(By.XPATH, '//*[@id="pw"]')
         pw_field.click()
-        pw_field.send_keys(PASSWORD)
+        pw_field.send_keys(login_credentials['con_password'])
         time.sleep(1)
         
         # 로그인 버튼 클릭
@@ -697,15 +776,12 @@ new_url = 'https://www.bizppurio.com/'
 driver.get(new_url)
 driver.maximize_window()
 
-# 예시: 로그인
-# 로그인 요소를 찾아서 클릭하거나 입력
-PPURIO_USERNAME = os.getenv('PPURIO_LOGIN_USERNAME')
-PPURIO_PASSWORD = os.getenv('PPURIO_LOGIN_PASSWORD')
+# PPURIO 로그인 부분 수정
 username_input = driver.find_element(By.ID, 'bizwebHeaderUserId')
-username_input.send_keys(PPURIO_USERNAME)  # 아이디 입력
+username_input.send_keys(login_credentials['ppurio_username'])
 
 password_input = driver.find_element(By.ID, 'bizwebHeaderUserPwd')
-password_input.send_keys(PPURIO_PASSWORD)  # 비밀번호 입력
+password_input.send_keys(login_credentials['ppurio_password'])
 
 login_button = driver.find_element(By.XPATH, '//*[@id="bizwebHeaderBtnLogin"]')
 login_button.click()

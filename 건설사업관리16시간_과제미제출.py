@@ -1,5 +1,12 @@
 from dotenv import load_dotenv
 import os
+import locale
+import sys
+import time
+from datetime import datetime, timedelta
+import configparser
+import tkinter as tk
+from tkinter import messagebox
 
 load_dotenv()
 
@@ -30,6 +37,8 @@ from datetime import datetime
 from datetime import datetime, timedelta
 
 from selenium.webdriver.support.wait import WebDriverWait
+
+from login_module import get_login_credentials
 
 def get_configured_driver(download_directory):
     # 오늘 날짜 가져오기
@@ -81,8 +90,11 @@ url = 'https://www.con.or.kr/'
 driver.get(url)
 driver.maximize_window()
 
+
 time.sleep(2)
 
+# 로그인 정보 받아오기
+login_credentials = get_login_credentials()
 
 def login(driver):
     # URL로 이동
@@ -98,31 +110,20 @@ def login(driver):
     except:
         print("팝업이 없거나 이미 처리되었습니다.")
     
-    # 환경 변수에서 로그인 정보 가져오기
-    USERNAME = os.getenv('LOGIN_USERNAME')
-    PASSWORD = os.getenv('LOGIN_PASSWORD')
-    
-    if not USERNAME or not PASSWORD:
-        raise ValueError("로그인 정보가 환경 변수에 설정되지 않았습니다.")
-    
     try:
         # 로그인 시도
         id_field = driver.find_element(By.XPATH, '//*[@id="id"]')
         id_field.click()
-        id_field.send_keys(USERNAME)
+        id_field.send_keys(login_credentials['con_username'])
         time.sleep(1)
         
         pw_field = driver.find_element(By.XPATH, '//*[@id="pw"]')
         pw_field.click()
-        pw_field.send_keys(PASSWORD)
+        pw_field.send_keys(login_credentials['con_password'])
         time.sleep(1)
         
         # 로그인 버튼 클릭
         driver.find_element(By.XPATH, '/html/body/div[3]/div/div[1]/div/div[2]/div[1]/button').click()
-        time.sleep(2)
-
-        time.sleep(2)
-        driver.find_element(By.XPATH,'//*[@id="popup_layout_list"]/div/div[2]/div[3]/div[2]').click()
         time.sleep(2)
         
     except Exception as e:
@@ -131,7 +132,9 @@ def login(driver):
 
 # 로그인 한 번만 실행
 login(driver)
-time.sleep(1)
+time.sleep(2)
+driver.find_element(By.XPATH,'//*[@id="popup_layout_list"]/div/div[2]/div[3]/div[2]').click()
+time.sleep(2)
 driver.find_element(By.XPATH,'//*[@id="side_drop_down_menu"]/div/div[4]/div[9]/div[1]').click()
 time.sleep(1)
 driver.find_element(By.XPATH,'//*[@id="side_drop_down_menu"]/div/div[4]/div[9]/div[2]/div[2]/div[1]/a').click()
@@ -147,51 +150,8 @@ time.sleep(1)
 
 input_field = driver.find_element(By.XPATH, '//*[@id="wrapper"]/div[1]/div/div/div[1]/div[2]/div/table/tbody/tr[4]/td[4]/input') #기수이름
 input_field.click()
-# # 현재 날짜 가져오기
-# current_date = datetime.now()
-#
-# # 월 숫자를 한국어 월 이름으로 매핑하는 딕셔너리
-# month_names_korean = {
-#     1: "01월",
-#     2: "02월",
-#     3: "03월",
-#     4: "04월",
-#     5: "05월",
-#     6: "06월",
-#     7: "07월",
-#     8: "08월",
-#     9: "09월",
-#     10: "10월",
-#     11: "11월",
-#     12: "12월"
-# }
-#
-# # 월과 일 추출
-# month_number = current_date.month
-# month = month_names_korean[month_number]  # 한국어 월 이름
-# day = current_date.day
-#
-# # 날짜에 접미사를 추가하는 함수
-# def add_suffix(day):
-#     if 4 <= day <= 20 or 24 <= day <= 30:
-#         return f"{day:02d}일"
-#     else:
-#         return f"{day:02d}일"
-# # 한국 시간대(UTC+9)의 현재 날짜를 가져옵니다.
-# current_date_korean_time = datetime.utcnow() + timedelta(hours=9)
-#
-# # 월과 일을 추출합니다.
-# month = current_date_korean_time.strftime("%m월")  # 한국어로 월 이름 표시
-# day = current_date_korean_time.day
-#
-# # 날짜를 "월 일[접미사]" 형식으로 포맷합니다.
-# formatted_date = f"{month} {add_suffix(day)}"
-#
-# print(formatted_date)
 time.sleep(1)
 input_field.send_keys("16시간") #기수이름 입력
-
-
 
 input_field = driver.find_element(By.XPATH, '//*[@id="wrapper"]/div[1]/div/div/div[1]/div[2]/div/table/tbody/tr[4]/td[6]/input') #기수번호
 input_field.click()
@@ -343,15 +303,12 @@ new_url = 'https://www.bizppurio.com/'
 driver.get(new_url)
 driver.maximize_window()
 
-# 예시: 로그인
-# 로그인 요소를 찾아서 클릭하거나 입력
-PPURIO_USERNAME = os.getenv('PPURIO_LOGIN_USERNAME')
-PPURIO_PASSWORD = os.getenv('PPURIO_LOGIN_PASSWORD')
+# PPURIO 로그인 부분 수정
 username_input = driver.find_element(By.ID, 'bizwebHeaderUserId')
-username_input.send_keys(PPURIO_USERNAME)  # 아이디 입력
+username_input.send_keys(login_credentials['ppurio_username'])
 
 password_input = driver.find_element(By.ID, 'bizwebHeaderUserPwd')
-password_input.send_keys(PPURIO_PASSWORD)  # 비밀번호 입력
+password_input.send_keys(login_credentials['ppurio_password'])
 
 login_button = driver.find_element(By.XPATH, '//*[@id="bizwebHeaderBtnLogin"]')
 login_button.click()
