@@ -416,8 +416,8 @@ df = pd.read_excel(excel_file, usecols=columns_to_read, dtype="str")
 print(df.columns)
 print('중복 제거 전 데이터프레임 확인')
 print(df)
-# 패키지명 중복제거
-df.drop_duplicates(subset=['패키지명'], inplace=True)
+# 패키지명과 기수명을 기준으로 중복제거
+df.drop_duplicates(subset=['패키지명', '기수명'], inplace=True)
 print('중복 제거 후 데이터프레임 확인')
 print(df.columns)
 # 데이터프레임 확인
